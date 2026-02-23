@@ -67,40 +67,7 @@ Import when:
 - Rich text editors for major note areas
 - Dynamic attack rows (`+` button)
 - Import/Export JSON
-
-## Sharing This on GitHub
-
-This folder currently contains personal reference files (PDFs/Pages). The `.gitignore` in this repo excludes those by default.
-
-### Upload Steps (GitHub)
-
-1. Create a new empty repository on GitHub.
-2. In Terminal, go to this folder:
-   ```bash
-   cd "/Users/brettmilligan/DND/DnD Character Sheet"
-   ```
-3. Initialize git and commit:
-   ```bash
-   git init
-   git add CharacterSheet.html styles.css app.js README.md .gitignore
-   git commit -m "Initial character sheet app"
-   ```
-4. Connect your GitHub repo (replace URL):
-   ```bash
-   git remote add origin https://github.com/Milliganb22/DnD-Character-Sheet.git
-   git branch -M main
-   git push -u origin main
-   ```
-
-## Optional: Make It Easier for Friends
-
-If you want a shareable link instead of sending files, host it on:
-- GitHub Pages
-- Netlify
-- Vercel
-
-Because this is a static app, hosting is straightforward.
-
+  
 ## Troubleshooting
 
 ### My friend opened the HTML file and it looks broken
