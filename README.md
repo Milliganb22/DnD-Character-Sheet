@@ -5,20 +5,20 @@ A lightweight browser-based DnD character sheet that runs locally with no instal
 ## What This Is
 
 This project is a static web app (HTML/CSS/JavaScript):
-- `CharacterSheet.html`
+- `index.html`
 - `styles.css`
 - `app.js`
 
-Anyone can use it by opening `CharacterSheet.html` in a browser.
+Anyone can use it by opening `index.html` in a browser.
 
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
 2. Keep these 3 files in the same folder:
-   - `CharacterSheet.html`
+   - `index.html`
    - `styles.css`
    - `app.js`
-3. Open `CharacterSheet.html` in a browser (Chrome, Edge, Safari, Firefox).
+3. Open `index.html` in a browser (Chrome, Edge, Safari, Firefox).
 
 No install, no server, no account needed.
 
@@ -67,13 +67,34 @@ Import when:
 - Rich text editors for major note areas
 - Dynamic attack rows (`+` button)
 - Import/Export JSON
-  
+
+## Sharing This on GitHub
+
+This folder contains personal reference files (PDFs/.pages) and a character save file (`May7th.json`). The `.gitignore` in this repo excludes those by default, so they stay local and are never pushed.
+
+This project is tracked at [github.com/Milliganb22/DnD-Character-Sheet](https://github.com/Milliganb22/DnD-Character-Sheet). To push local changes:
+
+```bash
+git add -A
+git commit -m "Describe your change"
+git push
+```
+
+## Optional: Make It Easier for Friends
+
+If you want a shareable link instead of sending files, host it on:
+- GitHub Pages
+- Netlify
+- Vercel
+
+Because this is a static app, hosting is straightforward.
+
 ## Troubleshooting
 
 ### My friend opened the HTML file and it looks broken
 
 Make sure all 3 files are in the same folder:
-- `CharacterSheet.html`
+- `index.html`
 - `styles.css`
 - `app.js`
 
