@@ -491,7 +491,7 @@ function applyHpAdjustment() {
   amountInput.select();
 }
 
-function updateDerived({ skipHpClamp = false } = {}) {
+function updateDerived({ skipClamp = false } = {}) {
   const level = Number(document.getElementById("level").value) || 1;
   const prof = profByLevel(level);
   document.getElementById("profBonus").value = prof;
@@ -500,8 +500,8 @@ function updateDerived({ skipHpClamp = false } = {}) {
   const currentHpEl = document.getElementById("currentHp");
   const maxHp = Math.max(1, Number(maxHpEl.value) || 1);
 
-  // While Max HP is being typed, clamping would shrink Current HP on every keystroke (7 -> 70).
-  if (!skipHpClamp) {
+  // While Max HP or Level is being typed, clamping would shrink Current HP / rages left on every keystroke (7 -> 70).
+  if (!skipClamp) {
     const currentHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
     currentHpEl.value = String(currentHp);
   }
@@ -557,7 +557,7 @@ function updateDerived({ skipHpClamp = false } = {}) {
   const rageMax = rageUsesByLevel(level);
   document.getElementById("rageUsesMax").textContent = String(rageMax);
   const rageLeftEl = document.getElementById("rageUsesLeft");
-  if (rageLeftEl.value !== "") {
+  if (!skipClamp && rageLeftEl.value !== "") {
     const clamped = Math.min(rageMax, Math.max(0, Math.floor(Number(rageLeftEl.value) || 0)));
     if (String(clamped) !== rageLeftEl.value) {
       rageLeftEl.value = String(clamped);
@@ -672,6 +672,9 @@ function resetForm() {
   }
 
   document.querySelectorAll("input").forEach((el) => {
+    if (el.type === "radio" || el.type === "file") {
+      return;
+    }
     if (el.type === "checkbox") {
       el.checked = false;
     } else if (el.id === "level") {
@@ -720,14 +723,14 @@ function bindEvents() {
     if (!target.matches("input, [contenteditable=\"true\"]")) {
       return;
     }
-    updateDerived({ skipHpClamp: target.id === "maxHp" });
+    updateDerived({ skipClamp: target.id === "maxHp" || target.id === "level" });
     if (target.id !== "hpAdjustAmount" && target.name !== "hpAdjustMode") {
       scheduleSave();
     }
   });
 
   document.body.addEventListener("change", (event) => {
-    if (event.target.id === "maxHp") {
+    if (event.target.id === "maxHp" || event.target.id === "level") {
       updateDerived();
       scheduleSave();
     }
