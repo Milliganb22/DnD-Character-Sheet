@@ -12,7 +12,7 @@ const PRIMAL_KNOWLEDGE_SKILLS = new Set([
 
 let isTraitsSizeLocked = false;
 let isInventorySizeLocked = false;
-let lastTempHpValue = null;
+let saveTimer = null;
 
 const ABILITIES = [
   { key: "str", label: "Strength" },
@@ -67,7 +67,22 @@ const simpleFields = [
   "hitDice",
   "maxHp",
   "currentHp",
-  "tempHp"
+  "tempHp",
+  "initiativeBonus",
+  "rageUsesLeft",
+  "cp",
+  "sp",
+  "ep",
+  "gp",
+  "pp"
+];
+
+const CURRENCY_IDS = ["cp", "sp", "ep", "gp", "pp"];
+const DEATH_SAVE_IDS = ["dsS1", "dsS2", "dsS3", "dsF1", "dsF2", "dsF3"];
+const PASSIVE_SKILLS = [
+  { skill: "perception", outputId: "passivePerception" },
+  { skill: "insight", outputId: "passiveInsight" },
+  { skill: "investigation", outputId: "passiveInvestigation" }
 ];
 
 const richTextFields = ["masteryNotes", "proficiencies", "traits", "inventory", "notes"];
@@ -96,10 +111,67 @@ function rageDamageByLevel(level) {
   return 2;
 }
 
+function rageUsesByLevel(level) {
+  const lvl = Math.max(1, Math.min(20, Number(level) || 1));
+  if (lvl >= 17) {
+    return 6;
+  }
+  if (lvl >= 12) {
+    return 5;
+  }
+  if (lvl >= 6) {
+    return 4;
+  }
+  if (lvl >= 3) {
+    return 3;
+  }
+  return 2;
+}
+
+function clearDeathSaves() {
+  DEATH_SAVE_IDS.forEach((id) => {
+    document.getElementById(id).checked = false;
+  });
+}
+
 function plainTextToHtml(value) {
   const temp = document.createElement("div");
   temp.textContent = value;
   return temp.innerHTML.replace(/\n/g, "<br>");
+}
+
+const ALLOWED_TAGS = new Set(["B", "STRONG", "I", "EM", "U", "BR", "P", "DIV", "SPAN", "UL", "OL", "LI"]);
+const DROP_TAGS = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT", "IFRAME", "OBJECT", "EMBED", "SVG", "MATH", "LINK", "META"]);
+
+function sanitizeInto(source, target) {
+  source.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      target.appendChild(document.createTextNode(node.textContent));
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+    const tag = node.tagName.toUpperCase();
+    if (DROP_TAGS.has(tag)) {
+      return;
+    }
+    if (ALLOWED_TAGS.has(tag)) {
+      const clean = document.createElement(tag.toLowerCase());
+      sanitizeInto(node, clean);
+      target.appendChild(clean);
+    } else {
+      sanitizeInto(node, target);
+    }
+  });
+}
+
+// Imported JSON and pasted content are untrusted: rebuild from an allowlist, dropping every attribute.
+function sanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const wrapper = document.createElement("div");
+  sanitizeInto(doc.body, wrapper);
+  return wrapper.innerHTML;
 }
 
 function setTraitsLockState(locked) {
@@ -212,10 +284,13 @@ function addAttackRow(values = {}) {
   row.className = "attack-row";
   row.dataset.attackRow = "true";
   row.innerHTML = `
-    <input class="attack-name" type="text" placeholder="Attack" value="${values.name || ""}" />
-    <input class="attack-bonus" type="text" placeholder="e.g. +6" value="${values.bonus || ""}" />
-    <input class="attack-type" type="text" placeholder="Melee/Ranged/Spell" value="${values.type || ""}" />
+    <input class="attack-name" type="text" placeholder="Attack" />
+    <input class="attack-bonus" type="text" placeholder="e.g. +6" />
+    <input class="attack-type" type="text" placeholder="Melee/Ranged/Spell" />
   `;
+  row.querySelector(".attack-name").value = String(values.name ?? "");
+  row.querySelector(".attack-bonus").value = String(values.bonus ?? "");
+  row.querySelector(".attack-type").value = String(values.type ?? "");
   rows.appendChild(row);
 }
 
@@ -286,6 +361,10 @@ function getData() {
 
   data.isRaging = document.getElementById("isRaging").checked;
 
+  DEATH_SAVE_IDS.forEach((id) => {
+    data[id] = document.getElementById(id).checked;
+  });
+
   richTextFields.forEach((id) => {
     data[id] = document.getElementById(id).innerHTML;
   });
@@ -329,11 +408,25 @@ function setData(data) {
     document.getElementById("isRaging").checked = Boolean(data.isRaging);
   }
 
+  DEATH_SAVE_IDS.forEach((id) => {
+    document.getElementById(id).checked = Boolean(data[id]);
+  });
+
+  // Older saves stored the final initiative number; keep it by turning the difference from DEX into a bonus.
+  if (!("initiativeBonus" in data) && "initiative" in data) {
+    const dexMod = getModifier(Number(data.dex) || 10);
+    document.getElementById("initiativeBonus").value = String((Number(data.initiative) || 0) - dexMod);
+  }
+
+  if (!("rageUsesLeft" in data)) {
+    document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(data.level ?? document.getElementById("level").value));
+  }
+
   richTextFields.forEach((id) => {
     if (id in data && typeof data[id] === "string") {
       const value = data[id];
       if (value.includes("<") && value.includes(">")) {
-        document.getElementById(id).innerHTML = value;
+        document.getElementById(id).innerHTML = sanitizeHtml(value);
       } else {
         document.getElementById(id).innerHTML = plainTextToHtml(value);
       }
@@ -359,8 +452,9 @@ function applyHpAdjustment() {
   if (mode === "full") {
     tempHpEl.value = "0";
     currentHpEl.value = String(maxHp);
-    lastTempHpValue = null;
+    clearDeathSaves();
     updateDerived();
+    scheduleSave();
     setStatus("Reset to full HP.", "status-ok");
     amountInput.select();
     return;
@@ -372,51 +466,47 @@ function applyHpAdjustment() {
     return;
   }
 
-  const tempHp = Math.max(0, Number(tempHpEl.value) || 0);
-  const effectiveMaxHp = maxHp + tempHp;
-  const currentHp = Math.max(0, Number(currentHpEl.value) || 0);
-  const nextHp = mode === "heal"
-    ? Math.min(effectiveMaxHp, currentHp + amount)
-    : Math.max(0, currentHp - amount);
+  const currentHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
+  let message;
 
-  currentHpEl.value = String(nextHp);
+  if (mode === "heal") {
+    currentHpEl.value = String(Math.min(maxHp, currentHp + amount));
+    if (currentHp === 0) {
+      clearDeathSaves();
+    }
+    message = `Healed ${amount} HP.`;
+  } else {
+    const tempHp = Math.max(0, Number(tempHpEl.value) || 0);
+    const absorbed = Math.min(tempHp, amount);
+    tempHpEl.value = String(tempHp - absorbed);
+    currentHpEl.value = String(Math.max(0, currentHp - (amount - absorbed)));
+    message = absorbed
+      ? `Took ${amount} damage (${absorbed} absorbed by temp HP).`
+      : `Took ${amount} damage.`;
+  }
+
   updateDerived();
-
-  setStatus(
-    mode === "heal" ? `Healed ${amount} HP.` : `Took ${amount} damage.`,
-    "status-ok"
-  );
-
+  scheduleSave();
+  setStatus(message, "status-ok");
   amountInput.select();
 }
 
-function updateDerived() {
+function updateDerived({ skipHpClamp = false } = {}) {
   const level = Number(document.getElementById("level").value) || 1;
   const prof = profByLevel(level);
   document.getElementById("profBonus").value = prof;
 
   const maxHpEl = document.getElementById("maxHp");
   const currentHpEl = document.getElementById("currentHp");
-  const tempHpEl = document.getElementById("tempHp");
   const maxHp = Math.max(1, Number(maxHpEl.value) || 1);
-  const tempHp = Math.max(0, Number(tempHpEl.value) || 0);
 
-  let currentHp = Number(currentHpEl.value);
-  if (!Number.isFinite(currentHp)) {
-    currentHp = maxHp + tempHp;
+  // While Max HP is being typed, clamping would shrink Current HP on every keystroke (7 -> 70).
+  if (!skipHpClamp) {
+    const currentHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
+    currentHpEl.value = String(currentHp);
   }
-
-  if (lastTempHpValue === null) {
-    lastTempHpValue = tempHp;
-  } else if (tempHp !== lastTempHpValue) {
-    currentHp += tempHp - lastTempHpValue;
-    lastTempHpValue = tempHp;
-  }
-
-  const effectiveMaxHp = maxHp + tempHp;
-  currentHp = Math.min(effectiveMaxHp, Math.max(0, currentHp));
-  currentHpEl.value = String(currentHp);
-  document.getElementById("damageTaken").value = String(Math.max(0, effectiveMaxHp - currentHp));
+  const shownHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
+  document.getElementById("damageTaken").value = String(maxHp - shownHp);
 
   const isRaging = document.getElementById("isRaging").checked;
   const rageBonus = isRaging ? rageDamageByLevel(level) : 0;
@@ -453,6 +543,27 @@ function updateDerived() {
     document.getElementById(`${s.key}Val`).textContent = `${formatSigned(baseTotal)}${advText}`;
   });
 
+  const initiativeBonus = Number(document.getElementById("initiativeBonus").value) || 0;
+  document.getElementById("initiative").value = String(abilityMods.dex + initiativeBonus);
+
+  PASSIVE_SKILLS.forEach(({ skill, outputId }) => {
+    const def = SKILLS.find((s) => s.key === skill);
+    const proficient = document.getElementById(`${skill}Prof`).checked;
+    const expertise = document.getElementById(`${skill}Expert`).checked;
+    const profMult = expertise ? 2 : proficient ? 1 : 0;
+    document.getElementById(outputId).textContent = String(10 + abilityMods[def.ability] + profMult * prof);
+  });
+
+  const rageMax = rageUsesByLevel(level);
+  document.getElementById("rageUsesMax").textContent = String(rageMax);
+  const rageLeftEl = document.getElementById("rageUsesLeft");
+  if (rageLeftEl.value !== "") {
+    const clamped = Math.min(rageMax, Math.max(0, Math.floor(Number(rageLeftEl.value) || 0)));
+    if (String(clamped) !== rageLeftEl.value) {
+      rageLeftEl.value = String(clamped);
+    }
+  }
+
   document.getElementById("rageDamageBonus").textContent = formatSigned(rageBonus);
   document.getElementById("rageStrChecks").textContent = isRaging ? "Advantage" : "Normal";
   document.getElementById("rageStrSaves").textContent = isRaging ? "Advantage" : "Normal";
@@ -486,22 +597,37 @@ function setStatus(message, type = "") {
   }
 }
 
-function saveToLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getData()));
-  setStatus("Saved to browser storage.", "status-ok");
+function saveToLocal(auto = false) {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getData()));
+    setStatus(auto ? "Auto-saved." : "Saved to browser storage.", "status-ok");
+  } catch {
+    setStatus("Could not save: browser storage is blocked or full. Use Export JSON.", "status-error");
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToLocal(true), 600);
 }
 
 function loadFromLocal() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw = null;
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    setStatus("Browser storage is blocked; changes will not persist. Use Export JSON.", "status-error");
+  }
   if (!raw) {
-    lastTempHpValue = null;
+    document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(document.getElementById("level").value));
     applyUiSettings();
     updateDerived();
     return;
   }
 
   try {
-    lastTempHpValue = null;
     setData(JSON.parse(raw));
     setStatus("Loaded saved character.", "status-ok");
   } catch {
@@ -526,8 +652,11 @@ function importJson(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      lastTempHpValue = null;
-      setData(JSON.parse(String(reader.result)));
+      const parsed = JSON.parse(String(reader.result));
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("not a character object");
+      }
+      setData(parsed);
       saveToLocal();
       setStatus("Imported character JSON.", "status-ok");
     } catch {
@@ -555,8 +684,10 @@ function resetForm() {
       el.value = 30;
     } else if (el.id === "maxHp" || el.id === "currentHp") {
       el.value = 10;
-    } else if (el.id === "tempHp" || el.id === "initiative") {
+    } else if (el.id === "tempHp" || el.id === "initiative" || el.id === "initiativeBonus" || CURRENCY_IDS.includes(el.id)) {
       el.value = 0;
+    } else if (el.id === "rageUsesLeft") {
+      el.value = rageUsesByLevel(1);
     } else if (ABILITIES.some((a) => a.key === el.id)) {
       el.value = 10;
     } else if (el.id !== "profBonus") {
@@ -571,8 +702,13 @@ function resetForm() {
   document.querySelector('input[name="hpAdjustMode"][value="damage"]').checked = true;
 
   buildAttacksTable();
-  lastTempHpValue = null;
-  localStorage.removeItem(STORAGE_KEY);
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // storage unavailable; nothing to clear
+  }
   applyUiSettings();
   updateDerived();
   setStatus("Sheet reset.");
@@ -580,8 +716,59 @@ function resetForm() {
 
 function bindEvents() {
   document.body.addEventListener("input", (event) => {
-    if (event.target.matches("input, [contenteditable=\"true\"]")) {
+    const target = event.target;
+    if (!target.matches("input, [contenteditable=\"true\"]")) {
+      return;
+    }
+    updateDerived({ skipHpClamp: target.id === "maxHp" });
+    if (target.id !== "hpAdjustAmount" && target.name !== "hpAdjustMode") {
+      scheduleSave();
+    }
+  });
+
+  document.body.addEventListener("change", (event) => {
+    if (event.target.id === "maxHp") {
       updateDerived();
+      scheduleSave();
+    }
+    if (event.target.id === "isRaging" && event.target.checked) {
+      const leftEl = document.getElementById("rageUsesLeft");
+      const left = Number(leftEl.value) || 0;
+      if (left > 0) {
+        leftEl.value = String(left - 1);
+        setStatus(`Rage started. ${left - 1} left.`, "status-ok");
+      } else {
+        setStatus("No rages left in the counter. Edit it if that's wrong.", "status-error");
+      }
+      updateDerived();
+      scheduleSave();
+    }
+  });
+
+  document.getElementById("clearDeathSavesBtn").addEventListener("click", () => {
+    clearDeathSaves();
+    scheduleSave();
+  });
+
+  document.getElementById("rageShortRestBtn").addEventListener("click", () => {
+    const leftEl = document.getElementById("rageUsesLeft");
+    leftEl.value = String((Number(leftEl.value) || 0) + 1);
+    updateDerived();
+    scheduleSave();
+    setStatus("Short rest: regained one rage.", "status-ok");
+  });
+
+  document.getElementById("rageLongRestBtn").addEventListener("click", () => {
+    const level = document.getElementById("level").value;
+    document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(level));
+    updateDerived();
+    scheduleSave();
+    setStatus("Long rest: all rages regained.", "status-ok");
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && saveTimer !== null) {
+      saveToLocal(true);
     }
   });
 
@@ -601,10 +788,22 @@ function bindEvents() {
       }
       executeRichCommand(editor, cmd, null);
       updateDerived();
+      scheduleSave();
     });
   });
 
   document.querySelectorAll(".rich-input").forEach((editor) => {
+    editor.addEventListener("paste", (event) => {
+      const clipboard = event.clipboardData;
+      if (!clipboard) {
+        return;
+      }
+      event.preventDefault();
+      const html = clipboard.getData("text/html");
+      const clean = html ? sanitizeHtml(html) : plainTextToHtml(clipboard.getData("text/plain"));
+      document.execCommand("insertHTML", false, clean);
+    });
+
     editor.addEventListener("keydown", (event) => {
       if (!(event.ctrlKey || event.metaKey)) {
         return;
@@ -620,10 +819,12 @@ function bindEvents() {
 
   document.getElementById("traitsSizeLockBtn").addEventListener("click", () => {
     setTraitsLockState(!isTraitsSizeLocked);
+    scheduleSave();
   });
 
   document.getElementById("inventorySizeLockBtn").addEventListener("click", () => {
     setInventoryLockState(!isInventorySizeLocked);
+    scheduleSave();
   });
 
   document.getElementById("applyHpAdjustBtn").addEventListener("click", applyHpAdjustment);
@@ -637,9 +838,10 @@ function bindEvents() {
 
   document.getElementById("addAttackBtn").addEventListener("click", () => {
     addAttackRow();
+    scheduleSave();
   });
 
-  document.getElementById("saveBtn").addEventListener("click", saveToLocal);
+  document.getElementById("saveBtn").addEventListener("click", () => saveToLocal());
   document.getElementById("exportBtn").addEventListener("click", exportJson);
   document.getElementById("resetBtn").addEventListener("click", resetForm);
 

@@ -61,9 +61,13 @@ Import when:
 ## Features Included
 
 - Character stats, saves, skills, proficiencies, attacks, inventory, notes
-- Barbarian Rage tracking (2024 rules behavior shown in UI)
-- HP damage/heal/full reset controls
-- Temp HP-aware current HP tracking
+- Barbarian Rage tracking (2024 rules behavior shown in UI), including rages left per long rest
+- HP damage/heal/full reset controls; temp HP absorbs damage first
+- Death saves tracker (clears when you heal from 0)
+- Initiative calculated from DEX plus an editable bonus
+- Passive Perception, Insight, and Investigation
+- CP/SP/EP/GP/PP currency fields
+- Autosaves to your browser as you edit
 - Rich text editors for major note areas
 - Dynamic attack rows (`+` button)
 - Import/Export JSON

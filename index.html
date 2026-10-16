@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
     <title>DnD Character Sheet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -51,13 +55,14 @@
         <h2>Combat</h2>
         <div class="form-grid compact-grid">
           <label>Armor Class<input id="ac" type="number" min="0" value="10" /></label>
-          <label>Initiative<input id="initiative" type="number" value="0" /></label>
           <label>Speed<input id="speed" type="number" min="0" value="30" /></label>
-          <label>Hit Dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
+          <label>Initiative (DEX + bonus)<input id="initiative" type="number" value="0" readonly /></label>
+          <label>Initiative Bonus<input id="initiativeBonus" type="number" value="0" /></label>
           <label>Max HP<input id="maxHp" type="number" min="1" value="10" /></label>
           <label>Current HP<input id="currentHp" type="number" min="0" value="10" /></label>
           <label>Temp HP<input id="tempHp" type="number" min="0" value="0" /></label>
           <label>Damage Taken<input id="damageTaken" type="number" min="0" value="0" readonly /></label>
+          <label>Hit Dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
         </div>
 
         <div class="hp-adjust">
@@ -72,10 +77,37 @@
           <button id="applyHpAdjustBtn" type="button" class="btn hp-apply-btn">Apply</button>
         </div>
 
+        <div class="death-saves">
+          <strong>Death Saves</strong>
+          <span class="death-group">
+            Success
+            <input id="dsS1" type="checkbox" aria-label="Death save success 1" />
+            <input id="dsS2" type="checkbox" aria-label="Death save success 2" />
+            <input id="dsS3" type="checkbox" aria-label="Death save success 3" />
+          </span>
+          <span class="death-group">
+            Failure
+            <input id="dsF1" type="checkbox" aria-label="Death save failure 1" />
+            <input id="dsF2" type="checkbox" aria-label="Death save failure 2" />
+            <input id="dsF3" type="checkbox" aria-label="Death save failure 3" />
+          </span>
+          <button id="clearDeathSavesBtn" type="button" class="rich-btn">Clear</button>
+        </div>
+
         <label class="rage-toggle" for="isRaging">
           <input id="isRaging" type="checkbox" />
           <span>Raging</span>
         </label>
+
+        <div class="rage-uses">
+          <span class="rage-uses-count">
+            Rages left
+            <input id="rageUsesLeft" type="number" min="0" aria-label="Rages left" />
+            / <span id="rageUsesMax">2</span>
+          </span>
+          <button id="rageShortRestBtn" type="button" class="rich-btn" title="Regain one expended use">Short Rest +1</button>
+          <button id="rageLongRestBtn" type="button" class="rich-btn" title="Regain all expended uses">Long Rest</button>
+        </div>
 
         <div id="rageEffects" class="rage-effects">
           <div><strong>Damage Bonus:</strong> <span id="rageDamageBonus">+0</span></div>
@@ -102,6 +134,12 @@
       </section>
 
       <section class="panel panel-skills">
+        <h2>Passive Senses</h2>
+        <div class="passives">
+          <div class="passive"><span>Perception</span><span id="passivePerception" class="value-pill">10</span></div>
+          <div class="passive"><span>Insight</span><span id="passiveInsight" class="value-pill">10</span></div>
+          <div class="passive"><span>Investigation</span><span id="passiveInvestigation" class="value-pill">10</span></div>
+        </div>
         <h2>Saving Throws</h2>
         <div id="savingThrows" class="checklist"></div>
         <h2>Skills</h2>
@@ -141,6 +179,13 @@
         <div class="inventory-head">
           <h2>Inventory & Currency</h2>
           <button id="inventorySizeLockBtn" type="button" class="rich-btn inventory-lock-btn">Lock Size</button>
+        </div>
+        <div class="currency-grid">
+          <label>CP<input id="cp" type="number" min="0" value="0" /></label>
+          <label>SP<input id="sp" type="number" min="0" value="0" /></label>
+          <label>EP<input id="ep" type="number" min="0" value="0" /></label>
+          <label>GP<input id="gp" type="number" min="0" value="0" /></label>
+          <label>PP<input id="pp" type="number" min="0" value="0" /></label>
         </div>
         <div class="rich-toolbar">
           <button type="button" class="rich-btn" data-cmd="bold" data-target="inventory" title="Bold"><strong>B</strong></button>

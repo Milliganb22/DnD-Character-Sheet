@@ -272,6 +272,79 @@ input[readonly] {
   white-space: nowrap;
 }
 
+.death-saves {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  border: 1px solid #d7c9b4;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  background: #fff8ee;
+  font-size: 0.9rem;
+}
+
+.death-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.death-saves input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.rage-uses {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rage-uses-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.rage-uses-count input {
+  width: 3.4rem;
+  padding: 0.25rem 0.4rem;
+}
+
+.passives {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.passive {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  border-radius: 8px;
+  background: #faf5eb;
+  font-weight: 600;
+}
+
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.currency-grid input {
+  padding: 0.35rem 0.4rem;
+}
+
 .rage-effects {
   margin-top: 0.55rem;
   border: 1px solid #d9cfbe;
