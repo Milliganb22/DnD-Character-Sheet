@@ -109,17 +109,20 @@
           <button id="rageLongRestBtn" type="button" class="rich-btn" title="Regain all expended uses">Long Rest</button>
         </div>
 
-        <div id="rageEffects" class="rage-effects">
-          <div><strong>Damage Bonus:</strong> <span id="rageDamageBonus">+0</span></div>
-          <div><strong>STR Checks:</strong> <span id="rageStrChecks">Normal</span></div>
-          <div><strong>STR Saves:</strong> <span id="rageStrSaves">Normal</span></div>
-          <div><strong>Damage Resistance:</strong> <span id="rageResist">Off</span></div>
-          <div><strong>Spells/Concentration:</strong> <span id="rageSpellLock">Normal</span></div>
-          <div><strong>Rage Duration:</strong> <span id="rageDuration">Inactive</span></div>
-          <div><strong>Primal Knowledge:</strong> <span id="ragePrimalKnowledge">Inactive</span></div>
-          <div><strong>Heavy Armor/Incapacitated:</strong> <span id="rageEndCondition">Normal</span></div>
-          <div><strong>Entering Rage:</strong> <span id="rageConditionClear">No condition change</span></div>
-        </div>
+        <details id="rageEffects" class="rage-effects">
+          <summary>Rage effects</summary>
+          <div class="rage-effects-list">
+            <div><strong>Damage Bonus:</strong> <span id="rageDamageBonus">+0</span></div>
+            <div><strong>STR Checks:</strong> <span id="rageStrChecks">Normal</span></div>
+            <div><strong>STR Saves:</strong> <span id="rageStrSaves">Normal</span></div>
+            <div><strong>Damage Resistance:</strong> <span id="rageResist">Off</span></div>
+            <div><strong>Spells/Concentration:</strong> <span id="rageSpellLock">Normal</span></div>
+            <div><strong>Rage Duration:</strong> <span id="rageDuration">Inactive</span></div>
+            <div><strong>Primal Knowledge:</strong> <span id="ragePrimalKnowledge">Inactive</span></div>
+            <div><strong>Heavy Armor/Incapacitated:</strong> <span id="rageEndCondition">Normal</span></div>
+            <div><strong>Entering Rage:</strong> <span id="rageConditionClear">No condition change</span></div>
+          </div>
+        </details>
 
         <div class="mastery-notes">
           <h3>Spell & Weapon Mastery</h3>
@@ -129,7 +132,7 @@
             <button type="button" class="rich-btn" data-cmd="underline" data-target="masteryNotes" title="Underline"><u>U</u></button>
             <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="masteryNotes" title="Bulleted List">• List</button>
           </div>
-          <div id="masteryNotes" class="rich-input rich-input-md" contenteditable="true" data-placeholder="Add spells and weapon masteries here..."></div>
+          <div id="masteryNotes" role="textbox" aria-multiline="true" aria-label="Spell and weapon mastery notes" class="rich-input rich-input-md" contenteditable="true" data-placeholder="Add spells and weapon masteries here..."></div>
         </div>
       </section>
 
@@ -141,8 +144,10 @@
           <div class="passive"><span>Investigation</span><span id="passiveInvestigation" class="value-pill">10</span></div>
         </div>
         <h2>Saving Throws</h2>
+        <div class="check-head" aria-hidden="true"><span>Prof</span><span></span><span></span></div>
         <div id="savingThrows" class="checklist"></div>
         <h2>Skills</h2>
+        <div class="check-head" aria-hidden="true"><span>Prof</span><span></span><span title="Expertise">Exp</span></div>
         <div id="skills" class="checklist"></div>
       </section>
 
@@ -157,7 +162,7 @@
           <button type="button" class="rich-btn" data-cmd="underline" data-target="traits" title="Underline"><u>U</u></button>
           <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="traits" title="Bulleted List">• List</button>
         </div>
-        <div id="traits" class="rich-input traits-textarea" contenteditable="true" data-placeholder="Class features, racial traits, feats, rage notes, build choices..."></div>
+        <div id="traits" role="textbox" aria-multiline="true" aria-label="Features and traits" class="rich-input traits-textarea" contenteditable="true" data-placeholder="Class features, racial traits, feats, rage notes, build choices..."></div>
       </section>
 
       <section class="panel panel-other">
@@ -168,7 +173,7 @@
           <button type="button" class="rich-btn" data-cmd="underline" data-target="proficiencies" title="Underline"><u>U</u></button>
           <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="proficiencies" title="Bulleted List">• List</button>
         </div>
-        <div id="proficiencies" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Weapons, armor, tools, languages..."></div>
+        <div id="proficiencies" role="textbox" aria-multiline="true" aria-label="Proficiencies and languages" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Weapons, armor, tools, languages..."></div>
 
         <div class="section-heading">
           <h2>Attacks & Spellcasting</h2>
@@ -193,7 +198,7 @@
           <button type="button" class="rich-btn" data-cmd="underline" data-target="inventory" title="Underline"><u>U</u></button>
           <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="inventory" title="Bulleted List">• List</button>
         </div>
-        <div id="inventory" class="rich-input inventory-textarea" contenteditable="true" data-placeholder="Items + GP/SP/CP..."></div>
+        <div id="inventory" role="textbox" aria-multiline="true" aria-label="Inventory" class="rich-input inventory-textarea" contenteditable="true" data-placeholder="Items + GP/SP/CP..."></div>
 
         <h2>Notes</h2>
         <div class="rich-toolbar">
@@ -202,12 +207,13 @@
           <button type="button" class="rich-btn" data-cmd="underline" data-target="notes" title="Underline"><u>U</u></button>
           <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="notes" title="Bulleted List">• List</button>
         </div>
-        <div id="notes" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Session notes, quests, roleplay hooks..."></div>
+        <div id="notes" role="textbox" aria-multiline="true" aria-label="Notes" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Session notes, quests, roleplay hooks..."></div>
       </section>
     </main>
 
     <footer class="status-bar">
-      <span id="status">Ready.</span>
+      <span id="status" role="status" aria-live="polite">Ready.</span>
+      <span id="saveState" class="save-state"></span>
     </footer>
 
     <script src="app.js"></script>

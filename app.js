@@ -267,6 +267,8 @@ function buildChecklist(containerId, rows, includeExpertise) {
       expertise.id = `${row.key}Expert`;
       expertise.type = "checkbox";
       expertise.title = "Expertise";
+      expertise.setAttribute("aria-label", `${row.label} expertise`);
+      item.classList.add("has-expertise");
       item.appendChild(expertise);
     }
 
@@ -288,9 +290,16 @@ function addAttackRow(values = {}) {
     <input class="attack-bonus" type="text" placeholder="e.g. +6" />
     <input class="attack-type" type="text" placeholder="Melee/Ranged/Spell" />
   `;
-  row.querySelector(".attack-name").value = String(values.name ?? "");
-  row.querySelector(".attack-bonus").value = String(values.bonus ?? "");
-  row.querySelector(".attack-type").value = String(values.type ?? "");
+  const rowNumber = rows.children.length + 1;
+  [
+    [".attack-name", "name", values.name],
+    [".attack-bonus", "bonus", values.bonus],
+    [".attack-type", "type", values.type]
+  ].forEach(([selector, label, value]) => {
+    const input = row.querySelector(selector);
+    input.value = String(value ?? "");
+    input.setAttribute("aria-label", `Attack ${rowNumber} ${label}`);
+  });
   rows.appendChild(row);
 }
 
@@ -585,7 +594,13 @@ function updateDerived({ skipClamp = false } = {}) {
   document.getElementById("ragePrimalKnowledge").textContent = hasPrimalKnowledge
     ? "On (Acrobatics, Intimidation, Perception, Stealth, Survival can use STR)"
     : "Inactive";
-  document.getElementById("rageEffects").classList.toggle("active", isRaging);
+  const rageEffectsEl = document.getElementById("rageEffects");
+  rageEffectsEl.classList.toggle("active", isRaging);
+  // Open on rage start and close on rage end, but leave a manual toggle alone between changes.
+  if (rageEffectsEl.dataset.raging !== String(isRaging)) {
+    rageEffectsEl.dataset.raging = String(isRaging);
+    rageEffectsEl.open = isRaging;
+  }
 }
 
 function setStatus(message, type = "") {
@@ -597,19 +612,30 @@ function setStatus(message, type = "") {
   }
 }
 
+function setSaveState(text) {
+  document.getElementById("saveState").textContent = text;
+}
+
+// Autosave reports only in the save indicator so it never overwrites the last action message.
 function saveToLocal(auto = false) {
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(getData()));
-    setStatus(auto ? "Auto-saved." : "Saved to browser storage.", "status-ok");
+    const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    setSaveState(`Saved ${time}`);
+    if (!auto) {
+      setStatus("Saved to browser storage.", "status-ok");
+    }
   } catch {
+    setSaveState("Not saved");
     setStatus("Could not save: browser storage is blocked or full. Use Export JSON.", "status-error");
   }
 }
 
 function scheduleSave() {
   clearTimeout(saveTimer);
+  setSaveState("Unsaved changes...");
   saveTimer = setTimeout(() => saveToLocal(true), 600);
 }
 
@@ -707,6 +733,7 @@ function resetForm() {
   buildAttacksTable();
   clearTimeout(saveTimer);
   saveTimer = null;
+  setSaveState("");
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
