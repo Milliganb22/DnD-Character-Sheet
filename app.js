@@ -1,7 +1,5 @@
 const STORAGE_KEY = "dnd-sheet-v1";
 const DEFAULT_ATTACK_ROWS = 5;
-const DEFAULT_TRAITS_HEIGHT = 340;
-const DEFAULT_INVENTORY_HEIGHT = 240;
 const PRIMAL_KNOWLEDGE_SKILLS = new Set([
   "acrobatics",
   "intimidation",
@@ -10,8 +8,6 @@ const PRIMAL_KNOWLEDGE_SKILLS = new Set([
   "survival"
 ]);
 
-let isTraitsSizeLocked = false;
-let isInventorySizeLocked = false;
 let saveTimer = null;
 
 const ABILITIES = [
@@ -174,53 +170,6 @@ function sanitizeHtml(html) {
   return wrapper.innerHTML;
 }
 
-function setTraitsLockState(locked) {
-  isTraitsSizeLocked = Boolean(locked);
-  const traits = document.getElementById("traits");
-  const btn = document.getElementById("traitsSizeLockBtn");
-  traits.style.resize = isTraitsSizeLocked ? "none" : "vertical";
-  btn.textContent = isTraitsSizeLocked ? "Unlock Size" : "Lock Size";
-  btn.classList.toggle("locked", isTraitsSizeLocked);
-}
-
-function setInventoryLockState(locked) {
-  isInventorySizeLocked = Boolean(locked);
-  const inventory = document.getElementById("inventory");
-  const btn = document.getElementById("inventorySizeLockBtn");
-  inventory.style.resize = isInventorySizeLocked ? "none" : "vertical";
-  btn.textContent = isInventorySizeLocked ? "Unlock Size" : "Lock Size";
-  btn.classList.toggle("locked", isInventorySizeLocked);
-}
-
-function applyUiSettings(ui = {}) {
-  const traits = document.getElementById("traits");
-  const inventory = document.getElementById("inventory");
-
-  const savedTraitsHeight = Number(ui.traitsHeight) || DEFAULT_TRAITS_HEIGHT;
-  const savedInventoryHeight = Number(ui.inventoryHeight) || DEFAULT_INVENTORY_HEIGHT;
-
-  traits.style.height = `${Math.max(DEFAULT_TRAITS_HEIGHT, savedTraitsHeight)}px`;
-  inventory.style.height = `${Math.max(DEFAULT_INVENTORY_HEIGHT, savedInventoryHeight)}px`;
-
-  setTraitsLockState(Boolean(ui.traitsSizeLocked));
-  setInventoryLockState(Boolean(ui.inventorySizeLocked));
-}
-
-function collectUiSettings() {
-  const traits = document.getElementById("traits");
-  const inventory = document.getElementById("inventory");
-
-  const currentTraitsHeight = Math.round(traits.getBoundingClientRect().height);
-  const currentInventoryHeight = Math.round(inventory.getBoundingClientRect().height);
-
-  return {
-    traitsHeight: Math.max(DEFAULT_TRAITS_HEIGHT, currentTraitsHeight),
-    inventoryHeight: Math.max(DEFAULT_INVENTORY_HEIGHT, currentInventoryHeight),
-    traitsSizeLocked: isTraitsSizeLocked,
-    inventorySizeLocked: isInventorySizeLocked
-  };
-}
-
 function executeRichCommand(editor, cmd, value = null) {
   editor.focus();
   document.execCommand(cmd, false, value);
@@ -287,9 +236,10 @@ function addAttackRow(values = {}) {
   row.dataset.attackRow = "true";
   row.innerHTML = `
     <input class="attack-name" type="text" placeholder="Attack" />
-    <input class="attack-bonus" type="text" placeholder="e.g. +6" />
-    <input class="attack-type" type="text" placeholder="Melee/Ranged/Spell" />
+    <input class="attack-bonus" type="text" placeholder="+8" />
+    <input class="attack-type" type="text" placeholder="Damage and notes" />
   `;
+  row.classList.toggle("is-blank", !values.name && !values.bonus && !values.type);
   const rowNumber = rows.children.length + 1;
   [
     [".attack-name", "name", values.name],
@@ -305,21 +255,19 @@ function addAttackRow(values = {}) {
 
 function buildAttacksTable(existingRows = []) {
   const container = document.getElementById("attacksTable");
-  container.innerHTML = `
-    <div class="attack-row attack-header">
-      <span>Name of Object</span><span>Attack Bonus</span><span>Attack Type</span>
-    </div>
-    <div id="attacksRows"></div>
-  `;
+  container.innerHTML = '<div id="attacksRows"></div>';
 
   if (existingRows.length > 0) {
     existingRows.forEach((row) => addAttackRow(row));
-    return;
+  } else {
+    for (let i = 0; i < DEFAULT_ATTACK_ROWS; i += 1) {
+      addAttackRow();
+    }
   }
 
-  for (let i = 0; i < DEFAULT_ATTACK_ROWS; i += 1) {
-    addAttackRow();
-  }
+  // Empty slots stay hidden until "+" is pressed, unless there is nothing else to show.
+  const allBlank = Array.from(container.querySelectorAll(".attack-row")).every((row) => row.classList.contains("is-blank"));
+  container.classList.toggle("show-blank", allBlank);
 }
 
 function collectAttackRows() {
@@ -379,13 +327,11 @@ function getData() {
   });
 
   data.attacks = collectAttackRows();
-  data.ui = collectUiSettings();
   return data;
 }
 
 function setData(data) {
   if (!data || typeof data !== "object") {
-    applyUiSettings();
     return;
   }
 
@@ -445,8 +391,135 @@ function setData(data) {
   const attackRows = Array.isArray(data.attacks) ? data.attacks : parseLegacyAttacks(data);
   buildAttacksTable(attackRows);
 
-  applyUiSettings(data.ui);
+  renderAllCards();
   updateDerived();
+}
+
+// ---- Read view for long text: each blank-line-separated block becomes a card. The editor stays the data. ----
+const CARD_VIEWS = [
+  ["traits", "traitsCards"],
+  ["masteryNotes", "masteryCards"]
+];
+
+function isBlankNode(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return !node.textContent.trim();
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return true;
+  }
+  return node.tagName === "BR" || !node.textContent.trim();
+}
+
+function splitEntries(editor) {
+  const nodes = Array.from(editor.childNodes);
+  const entries = [];
+  let current = [];
+  const flush = () => {
+    if (current.some((n) => !isBlankNode(n))) {
+      entries.push(current);
+    }
+    current = [];
+  };
+
+  nodes.forEach((node, i) => {
+    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "BR") {
+      const doubled = (nodes[i + 1] && nodes[i + 1].nodeName === "BR") || (nodes[i - 1] && nodes[i - 1].nodeName === "BR");
+      if (doubled) {
+        flush();
+      } else {
+        current.push(node);
+      }
+      return;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE && isBlankNode(node)) {
+      flush();
+      return;
+    }
+    current.push(node);
+  });
+  flush();
+  return entries;
+}
+
+function textBefore(root, el) {
+  const range = document.createRange();
+  range.setStart(root, 0);
+  range.setEndBefore(el);
+  return range.toString().trim();
+}
+
+function trimLeading(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    const text = node.textContent.replace(/^[\s :\-–—]+/, "");
+    node.textContent = text;
+    if (text) {
+      break;
+    }
+    node = walker.nextNode();
+  }
+  while (root.firstChild && isBlankNode(root.firstChild)) {
+    root.removeChild(root.firstChild);
+  }
+}
+
+function buildCard(nodes) {
+  const body = document.createElement("div");
+  body.className = "entry-body";
+  nodes.forEach((n) => body.appendChild(n.cloneNode(true)));
+
+  const card = document.createElement("article");
+  card.className = "entry";
+
+  const lead = body.querySelector("b, strong, u");
+  if (lead && textBefore(body, lead) === "") {
+    const title = lead.textContent.replace(/[\s :\-–—]+$/, "").trim();
+    if (title && title.length <= 70) {
+      const heading = document.createElement("h3");
+      heading.textContent = title;
+      card.appendChild(heading);
+      lead.remove();
+      trimLeading(body);
+    }
+  }
+  card.appendChild(body);
+  return card;
+}
+
+function renderCards(editorId, cardsId) {
+  const container = document.getElementById(cardsId);
+  container.textContent = "";
+  const entries = splitEntries(document.getElementById(editorId));
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "cards-empty";
+    empty.textContent = "Nothing here yet. Choose Edit text to add some.";
+    container.appendChild(empty);
+    return;
+  }
+  entries.forEach((nodes) => container.appendChild(buildCard(nodes)));
+}
+
+function renderAllCards() {
+  CARD_VIEWS.forEach(([editorId, cardsId]) => renderCards(editorId, cardsId));
+}
+
+function updateHeaderAndVitals() {
+  const level = document.getElementById("level").value;
+  const head = [level && `Level ${level}`, document.getElementById("race").value.trim(), document.getElementById("class").value.trim()]
+    .filter(Boolean)
+    .join(" ");
+  const tail = [document.getElementById("background").value.trim(), document.getElementById("alignment").value.trim()].filter(Boolean);
+  document.getElementById("summaryLine").textContent = [head, ...tail].filter(Boolean).join(", ");
+
+  const current = Number(document.getElementById("currentHp").value) || 0;
+  const max = Math.max(1, Number(document.getElementById("maxHp").value) || 1);
+  const pct = Math.max(0, Math.min(100, Math.round((current / max) * 100)));
+  document.getElementById("hpMeterFill").style.width = `${pct}%`;
+  document.querySelector(".vitals").dataset.hp = pct <= 25 ? "low" : "ok";
+  document.getElementById("deathStrip").hidden = current > 0;
 }
 
 function applyHpAdjustment() {
@@ -601,6 +674,8 @@ function updateDerived({ skipClamp = false } = {}) {
     rageEffectsEl.dataset.raging = String(isRaging);
     rageEffectsEl.open = isRaging;
   }
+
+  updateHeaderAndVitals();
 }
 
 function setStatus(message, type = "") {
@@ -648,7 +723,6 @@ function loadFromLocal() {
   }
   if (!raw) {
     document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(document.getElementById("level").value));
-    applyUiSettings();
     updateDerived();
     return;
   }
@@ -739,7 +813,7 @@ function resetForm() {
   } catch {
     // storage unavailable; nothing to clear
   }
-  applyUiSettings();
+  renderAllCards();
   updateDerived();
   setStatus("Sheet reset.");
 }
@@ -847,16 +921,6 @@ function bindEvents() {
     });
   });
 
-  document.getElementById("traitsSizeLockBtn").addEventListener("click", () => {
-    setTraitsLockState(!isTraitsSizeLocked);
-    scheduleSave();
-  });
-
-  document.getElementById("inventorySizeLockBtn").addEventListener("click", () => {
-    setInventoryLockState(!isInventorySizeLocked);
-    scheduleSave();
-  });
-
   document.getElementById("applyHpAdjustBtn").addEventListener("click", applyHpAdjustment);
 
   document.getElementById("hpAdjustAmount").addEventListener("keydown", (event) => {
@@ -868,7 +932,42 @@ function bindEvents() {
 
   document.getElementById("addAttackBtn").addEventListener("click", () => {
     addAttackRow();
+    document.getElementById("attacksTable").classList.add("show-blank");
+    const rows = document.querySelectorAll(".attack-row[data-attack-row]");
+    rows[rows.length - 1].querySelector(".attack-name").focus();
     scheduleSave();
+  });
+
+  document.querySelectorAll(".edit-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const fold = button.closest(".cardview");
+      const editing = !fold.classList.contains("editing");
+      fold.classList.toggle("editing", editing);
+      button.setAttribute("aria-pressed", String(editing));
+      button.textContent = editing ? "Done" : "Edit text";
+      if (editing) {
+        document.getElementById(button.dataset.editor).focus();
+      } else {
+        renderAllCards();
+      }
+    });
+  });
+
+  // Popovers close on Escape or a click elsewhere.
+  const popovers = [document.querySelector(".hp-tools"), document.querySelector(".file-menu")];
+  document.addEventListener("click", (event) => {
+    popovers.forEach((details) => {
+      if (details.open && !details.contains(event.target)) {
+        details.open = false;
+      }
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      popovers.forEach((details) => {
+        details.open = false;
+      });
+    }
   });
 
   document.getElementById("saveBtn").addEventListener("click", () => saveToLocal());
@@ -891,7 +990,15 @@ function init() {
   buildAttacksTable();
   bindEvents();
   loadFromLocal();
+  renderAllCards();
   updateDerived();
+
+  // Reference folds start closed on phones so the page is not a wall of text.
+  if (window.matchMedia("(max-width: 759px)").matches) {
+    document.querySelectorAll(".fold").forEach((fold) => {
+      fold.open = false;
+    });
+  }
 }
 
 init();

@@ -60,17 +60,20 @@ Import when:
 
 ## Features Included
 
-- Character stats, saves, skills, proficiencies, attacks, inventory, notes
-- Barbarian Rage tracking (2024 rules behavior shown in UI), including rages left per long rest
+- Pinned vitals bar (HP with a meter, AC, initiative, speed, rages left) that stays visible while you scroll
+- Large ability modifiers, passive senses, saves, and skills on one screen
+- Barbarian Rage tracking (2024 rules behavior shown in UI), including rages left per long rest; raging lights up the key numbers
 - HP damage/heal/full reset controls; temp HP absorbs damage first
-- Death saves tracker (clears when you heal from 0)
+- Death saves tracker that appears at 0 HP (clears when you heal)
 - Initiative calculated from DEX plus an editable bonus
-- Passive Perception, Insight, and Investigation
 - CP/SP/EP/GP/PP currency fields
+- Features & Traits and Weapon Mastery shown as cards (a blank line separates cards; use `Edit text` to change them)
+- Phone-friendly layout; long reference sections fold away
+- Dynamic attack rows (`+` button); empty slots stay hidden until you add one
 - Autosaves to your browser as you edit
-- Rich text editors for major note areas
-- Dynamic attack rows (`+` button)
 - Import/Export JSON
+
+Note: the sheet loads its fonts from Google Fonts, so it falls back to system fonts when offline.
 
 ## Sharing This on GitHub
 

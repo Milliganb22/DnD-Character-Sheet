@@ -11,207 +11,254 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="app-header">
-      <div>
-        <h1>DnD Character Sheet</h1>
-        <p>Build and track your character in one place.</p>
+    <header class="masthead">
+      <div class="identity">
+        <input id="name" class="name-input" type="text" aria-label="Character name" placeholder="Character name" />
+        <div class="identity-row">
+          <p id="summaryLine" class="summary-line"></p>
+          <details class="char-details">
+            <summary>Details</summary>
+            <div class="details-grid">
+              <label class="field">Class<input id="class" type="text" /></label>
+              <label class="field">Race<input id="race" type="text" /></label>
+              <label class="field">Background<input id="background" type="text" /></label>
+              <label class="field">Alignment<input id="alignment" type="text" /></label>
+              <label class="field">Level<input id="level" type="number" min="1" max="20" value="1" /></label>
+              <label class="field">Experience<input id="xp" type="number" min="0" value="0" /></label>
+              <label class="field">Proficiency bonus<input id="profBonus" type="number" value="2" readonly /></label>
+              <label class="field">Initiative bonus<input id="initiativeBonus" type="number" value="0" /></label>
+              <label class="field">Hit dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
+            </div>
+          </details>
+        </div>
       </div>
-      <div class="header-actions">
-        <button id="saveBtn" class="btn">Save</button>
-        <button id="exportBtn" class="btn">Export JSON</button>
-        <label class="btn file-btn" for="importFile">Import JSON</label>
-        <input id="importFile" type="file" accept="application/json" hidden />
-        <button id="resetBtn" class="btn btn-danger">Reset</button>
-      </div>
+
+      <details class="file-menu">
+        <summary>File</summary>
+        <div class="file-menu-list">
+          <button id="saveBtn" class="menu-btn" type="button">Save now</button>
+          <button id="exportBtn" class="menu-btn" type="button">Export JSON</button>
+          <label class="menu-btn" for="importFile">Import JSON</label>
+          <input id="importFile" type="file" accept="application/json" hidden />
+          <button id="resetBtn" class="menu-btn menu-danger" type="button">Reset sheet</button>
+        </div>
+      </details>
     </header>
 
-    <main class="sheet-grid">
-      <section class="panel panel-info">
-        <h2>Character Info</h2>
-        <div class="form-grid">
-          <label>Name<input id="name" type="text" /></label>
-          <label>Class<input id="class" type="text" /></label>
-          <label>Race<input id="race" type="text" /></label>
-          <label>Background<input id="background" type="text" /></label>
-          <label>Alignment<input id="alignment" type="text" /></label>
-          <label>Level<input id="level" type="number" min="1" max="20" value="1" /></label>
-          <label>Experience<input id="xp" type="number" min="0" value="0" /></label>
-          <label>Proficiency Bonus<input id="profBonus" type="number" value="2" readonly /></label>
+    <section class="vitals" aria-label="Vitals">
+      <div class="vital vital-hp">
+        <span class="vital-label" id="hpLabel">Hit points</span>
+        <div class="hp-readout" role="group" aria-labelledby="hpLabel">
+          <input id="currentHp" type="number" min="0" value="10" inputmode="numeric" aria-label="Current HP" />
+          <span class="hp-slash" aria-hidden="true">/</span>
+          <input id="maxHp" type="number" min="1" value="10" inputmode="numeric" aria-label="Max HP" />
         </div>
-      </section>
+        <div class="hp-meter" aria-hidden="true"><span id="hpMeterFill"></span></div>
+      </div>
 
-      <section class="panel panel-abilities">
-        <h2>Ability Scores</h2>
-        <div id="abilityCards" class="ability-cards"></div>
-      </section>
+      <label class="vital vital-ac">
+        <span class="vital-label">AC</span>
+        <input id="ac" type="number" min="0" value="10" inputmode="numeric" />
+      </label>
 
-      <section class="panel panel-combat">
-        <h2>Combat</h2>
-        <div class="form-grid compact-grid">
-          <label>Armor Class<input id="ac" type="number" min="0" value="10" /></label>
-          <label>Speed<input id="speed" type="number" min="0" value="30" /></label>
-          <label>Initiative (DEX + bonus)<input id="initiative" type="number" value="0" readonly /></label>
-          <label>Initiative Bonus<input id="initiativeBonus" type="number" value="0" /></label>
-          <label>Max HP<input id="maxHp" type="number" min="1" value="10" /></label>
-          <label>Current HP<input id="currentHp" type="number" min="0" value="10" /></label>
-          <label>Temp HP<input id="tempHp" type="number" min="0" value="0" /></label>
-          <label>Damage Taken<input id="damageTaken" type="number" min="0" value="0" readonly /></label>
-          <label>Hit Dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
-        </div>
+      <label class="vital vital-init">
+        <span class="vital-label">Initiative</span>
+        <input id="initiative" type="number" value="0" readonly />
+      </label>
 
-        <div class="hp-adjust">
-          <label>HP Change
-            <input id="hpAdjustAmount" type="number" min="0" step="1" placeholder="e.g. 15" />
-          </label>
-          <div class="hp-adjust-modes" role="radiogroup" aria-label="HP change mode">
-            <label class="hp-mode"><input type="radio" name="hpAdjustMode" value="damage" checked /> Damage</label>
-            <label class="hp-mode"><input type="radio" name="hpAdjustMode" value="heal" /> Heal</label>
-            <label class="hp-mode"><input type="radio" name="hpAdjustMode" value="full" /> Full HP</label>
-          </div>
-          <button id="applyHpAdjustBtn" type="button" class="btn hp-apply-btn">Apply</button>
-        </div>
+      <label class="vital vital-speed">
+        <span class="vital-label">Speed</span>
+        <input id="speed" type="number" min="0" value="30" inputmode="numeric" />
+      </label>
 
-        <div class="death-saves">
-          <strong>Death Saves</strong>
-          <span class="death-group">
-            Success
-            <input id="dsS1" type="checkbox" aria-label="Death save success 1" />
-            <input id="dsS2" type="checkbox" aria-label="Death save success 2" />
-            <input id="dsS3" type="checkbox" aria-label="Death save success 3" />
-          </span>
-          <span class="death-group">
-            Failure
-            <input id="dsF1" type="checkbox" aria-label="Death save failure 1" />
-            <input id="dsF2" type="checkbox" aria-label="Death save failure 2" />
-            <input id="dsF3" type="checkbox" aria-label="Death save failure 3" />
-          </span>
-          <button id="clearDeathSavesBtn" type="button" class="rich-btn">Clear</button>
-        </div>
-
-        <label class="rage-toggle" for="isRaging">
+      <div class="vital vital-rage">
+        <label class="rage-switch">
           <input id="isRaging" type="checkbox" />
-          <span>Raging</span>
+          <span>Rage</span>
         </label>
+        <div class="rage-count">
+          <input id="rageUsesLeft" type="number" min="0" inputmode="numeric" aria-label="Rages left" />
+          <span class="rage-max">of <span id="rageUsesMax">2</span> left</span>
+        </div>
+      </div>
 
-        <div class="rage-uses">
-          <span class="rage-uses-count">
-            Rages left
-            <input id="rageUsesLeft" type="number" min="0" aria-label="Rages left" />
-            / <span id="rageUsesMax">2</span>
-          </span>
-          <button id="rageShortRestBtn" type="button" class="rich-btn" title="Regain one expended use">Short Rest +1</button>
-          <button id="rageLongRestBtn" type="button" class="rich-btn" title="Regain all expended uses">Long Rest</button>
+      <details class="hp-tools">
+        <summary>Damage / heal</summary>
+        <div class="hp-tools-body">
+          <label class="field">Amount<input id="hpAdjustAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="15" /></label>
+          <div class="mode-group" role="radiogroup" aria-label="HP change mode">
+            <label class="mode"><input type="radio" name="hpAdjustMode" value="damage" checked /><span>Damage</span></label>
+            <label class="mode"><input type="radio" name="hpAdjustMode" value="heal" /><span>Heal</span></label>
+            <label class="mode"><input type="radio" name="hpAdjustMode" value="full" /><span>Full HP</span></label>
+          </div>
+          <button id="applyHpAdjustBtn" type="button" class="chip-btn primary">Apply</button>
+          <label class="field">Temp HP<input id="tempHp" type="number" min="0" value="0" inputmode="numeric" /></label>
+        </div>
+      </details>
+      <input id="damageTaken" type="number" readonly hidden />
+    </section>
+
+    <section class="death-strip" id="deathStrip" aria-label="Death saves" hidden>
+      <strong>Death saves</strong>
+      <span class="death-group">
+        Success
+        <input id="dsS1" type="checkbox" aria-label="Death save success 1" />
+        <input id="dsS2" type="checkbox" aria-label="Death save success 2" />
+        <input id="dsS3" type="checkbox" aria-label="Death save success 3" />
+      </span>
+      <span class="death-group">
+        Failure
+        <input id="dsF1" type="checkbox" aria-label="Death save failure 1" />
+        <input id="dsF2" type="checkbox" aria-label="Death save failure 2" />
+        <input id="dsF3" type="checkbox" aria-label="Death save failure 3" />
+      </span>
+      <button id="clearDeathSavesBtn" type="button" class="chip-btn">Clear</button>
+    </section>
+
+    <main class="sheet">
+      <section class="panel abilities-panel o-abilities" aria-label="Abilities">
+        <div id="abilityCards" class="ability-cards"></div>
+        <div class="passives" aria-label="Passive senses">
+          <div class="passive"><span>Passive Perception</span><span id="passivePerception" class="value-pill">10</span></div>
+          <div class="passive"><span>Passive Insight</span><span id="passiveInsight" class="value-pill">10</span></div>
+          <div class="passive"><span>Passive Investigation</span><span id="passiveInvestigation" class="value-pill">10</span></div>
+        </div>
+      </section>
+
+      <div class="cols">
+        <div class="col col-a">
+          <section class="panel act o-attacks" aria-labelledby="h-attacks">
+            <div class="panel-head">
+              <h2 id="h-attacks">Attacks</h2>
+              <button id="addAttackBtn" type="button" class="chip-btn" aria-label="Add attack row" title="Add attack row">+</button>
+            </div>
+            <div id="attacksTable" class="attacks-table"></div>
+          </section>
+
+          <section class="panel act o-rage" aria-labelledby="h-rage">
+            <div class="panel-head">
+              <h2 id="h-rage">Rage</h2>
+              <div class="rest-buttons">
+                <button id="rageShortRestBtn" type="button" class="chip-btn" title="Regain one expended use">Short rest +1</button>
+                <button id="rageLongRestBtn" type="button" class="chip-btn" title="Regain all expended uses">Long rest</button>
+              </div>
+            </div>
+            <details id="rageEffects" class="rage-effects">
+              <summary>Rage effects</summary>
+              <div class="rage-effects-list">
+                <div><strong>Damage bonus:</strong> <span id="rageDamageBonus">+0</span></div>
+                <div><strong>STR checks:</strong> <span id="rageStrChecks">Normal</span></div>
+                <div><strong>STR saves:</strong> <span id="rageStrSaves">Normal</span></div>
+                <div><strong>Damage resistance:</strong> <span id="rageResist">Off</span></div>
+                <div><strong>Spells and concentration:</strong> <span id="rageSpellLock">Normal</span></div>
+                <div><strong>Duration:</strong> <span id="rageDuration">Inactive</span></div>
+                <div><strong>Primal Knowledge:</strong> <span id="ragePrimalKnowledge">Inactive</span></div>
+                <div><strong>Heavy armor or incapacitated:</strong> <span id="rageEndCondition">Normal</span></div>
+                <div><strong>Entering rage:</strong> <span id="rageConditionClear">No condition change</span></div>
+              </div>
+            </details>
+          </section>
+
+
+        <details class="panel check fold o-prof" open>
+          <summary><h2>Proficiencies and languages</h2></summary>
+          <div class="rich-toolbar">
+            <button type="button" class="rich-btn" data-cmd="bold" data-target="proficiencies" title="Bold"><strong>B</strong></button>
+            <button type="button" class="rich-btn" data-cmd="italic" data-target="proficiencies" title="Italic"><em>I</em></button>
+            <button type="button" class="rich-btn" data-cmd="underline" data-target="proficiencies" title="Underline"><u>U</u></button>
+            <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="proficiencies" title="Bulleted list">List</button>
+          </div>
+          <div id="proficiencies" class="rich-input rich-sm" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Proficiencies and languages" data-placeholder="Weapons, armor, tools, languages..."></div>
+        </details>
         </div>
 
-        <details id="rageEffects" class="rage-effects">
-          <summary>Rage effects</summary>
-          <div class="rage-effects-list">
-            <div><strong>Damage Bonus:</strong> <span id="rageDamageBonus">+0</span></div>
-            <div><strong>STR Checks:</strong> <span id="rageStrChecks">Normal</span></div>
-            <div><strong>STR Saves:</strong> <span id="rageStrSaves">Normal</span></div>
-            <div><strong>Damage Resistance:</strong> <span id="rageResist">Off</span></div>
-            <div><strong>Spells/Concentration:</strong> <span id="rageSpellLock">Normal</span></div>
-            <div><strong>Rage Duration:</strong> <span id="rageDuration">Inactive</span></div>
-            <div><strong>Primal Knowledge:</strong> <span id="ragePrimalKnowledge">Inactive</span></div>
-            <div><strong>Heavy Armor/Incapacitated:</strong> <span id="rageEndCondition">Normal</span></div>
-            <div><strong>Entering Rage:</strong> <span id="rageConditionClear">No condition change</span></div>
+        <div class="col col-b">
+          <section class="panel check o-skills" aria-labelledby="h-skills">
+            <h2 id="h-skills">Skills</h2>
+            <div class="check-head" aria-hidden="true"><span>Prof</span><span></span><span title="Expertise">Exp</span></div>
+            <div id="skills" class="checklist"></div>
+          </section>
+        </div>
+
+        <div class="col col-c">
+          <section class="panel check o-saves" aria-labelledby="h-saves">
+            <h2 id="h-saves">Saving throws</h2>
+            <div id="savingThrows" class="checklist saves-list"></div>
+          </section>
+
+          <details class="panel check fold o-inventory" open>
+            <summary><h2>Inventory and coin</h2></summary>
+            <div class="currency-grid">
+              <label class="coin">CP<input id="cp" type="number" min="0" value="0" inputmode="numeric" /></label>
+              <label class="coin">SP<input id="sp" type="number" min="0" value="0" inputmode="numeric" /></label>
+              <label class="coin">EP<input id="ep" type="number" min="0" value="0" inputmode="numeric" /></label>
+              <label class="coin">GP<input id="gp" type="number" min="0" value="0" inputmode="numeric" /></label>
+              <label class="coin">PP<input id="pp" type="number" min="0" value="0" inputmode="numeric" /></label>
+            </div>
+            <div class="rich-toolbar">
+              <button type="button" class="rich-btn" data-cmd="bold" data-target="inventory" title="Bold"><strong>B</strong></button>
+              <button type="button" class="rich-btn" data-cmd="italic" data-target="inventory" title="Italic"><em>I</em></button>
+              <button type="button" class="rich-btn" data-cmd="underline" data-target="inventory" title="Underline"><u>U</u></button>
+              <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="inventory" title="Bulleted list">List</button>
+            </div>
+            <div id="inventory" class="rich-input" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Inventory" data-placeholder="Items..."></div>
+          </details>
+
+        <details class="panel check fold o-notes" open>
+          <summary><h2>Notes</h2></summary>
+          <div class="rich-toolbar">
+            <button type="button" class="rich-btn" data-cmd="bold" data-target="notes" title="Bold"><strong>B</strong></button>
+            <button type="button" class="rich-btn" data-cmd="italic" data-target="notes" title="Italic"><em>I</em></button>
+            <button type="button" class="rich-btn" data-cmd="underline" data-target="notes" title="Underline"><u>U</u></button>
+            <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="notes" title="Bulleted list">List</button>
           </div>
+          <div id="notes" class="rich-input rich-sm" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notes" data-placeholder="Session notes, quests, hooks..."></div>
+        </details>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <details class="cardview panel ref fold o-traits bottom-wide" open>
+          <summary><h2>Features and traits</h2></summary>
+          <div class="fold-tools">
+            <button type="button" class="chip-btn edit-toggle" data-editor="traits" aria-pressed="false">Edit text</button>
+            <div class="rich-toolbar">
+            <button type="button" class="rich-btn" data-cmd="bold" data-target="traits" title="Bold"><strong>B</strong></button>
+            <button type="button" class="rich-btn" data-cmd="italic" data-target="traits" title="Italic"><em>I</em></button>
+            <button type="button" class="rich-btn" data-cmd="underline" data-target="traits" title="Underline"><u>U</u></button>
+            <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="traits" title="Bulleted list">List</button>
+          </div>
+          </div>
+          <div id="traitsCards" class="cards" aria-label="Read view"></div>
+          <div id="traits" class="rich-input in-cardview" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Features and traits" data-placeholder="Class features, racial traits, feats..."></div>
         </details>
 
-        <div class="mastery-notes">
-          <h3>Spell & Weapon Mastery</h3>
-          <div class="rich-toolbar">
-            <button type="button" class="rich-btn" data-cmd="bold" data-target="masteryNotes" title="Bold"><strong>B</strong></button>
-            <button type="button" class="rich-btn" data-cmd="italic" data-target="masteryNotes" title="Italic"><em>I</em></button>
-            <button type="button" class="rich-btn" data-cmd="underline" data-target="masteryNotes" title="Underline"><u>U</u></button>
-            <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="masteryNotes" title="Bulleted List">• List</button>
+          <details class="cardview panel ref fold o-mastery bottom-wide" open>
+            <summary><h2>Weapon mastery and spells</h2></summary>
+            <div class="fold-tools">
+            <button type="button" class="chip-btn edit-toggle" data-editor="masteryNotes" aria-pressed="false">Edit text</button>
+            <div class="rich-toolbar">
+              <button type="button" class="rich-btn" data-cmd="bold" data-target="masteryNotes" title="Bold"><strong>B</strong></button>
+              <button type="button" class="rich-btn" data-cmd="italic" data-target="masteryNotes" title="Italic"><em>I</em></button>
+              <button type="button" class="rich-btn" data-cmd="underline" data-target="masteryNotes" title="Underline"><u>U</u></button>
+              <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="masteryNotes" title="Bulleted list">List</button>
+            </div>
           </div>
-          <div id="masteryNotes" role="textbox" aria-multiline="true" aria-label="Spell and weapon mastery notes" class="rich-input rich-input-md" contenteditable="true" data-placeholder="Add spells and weapon masteries here..."></div>
-        </div>
-      </section>
+          <div id="masteryCards" class="cards" aria-label="Read view"></div>
+            <div id="masteryNotes" class="rich-input in-cardview rich-md" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Weapon mastery and spells" data-placeholder="Weapon masteries and spells..."></div>
+          </details>
 
-      <section class="panel panel-skills">
-        <h2>Passive Senses</h2>
-        <div class="passives">
-          <div class="passive"><span>Perception</span><span id="passivePerception" class="value-pill">10</span></div>
-          <div class="passive"><span>Insight</span><span id="passiveInsight" class="value-pill">10</span></div>
-          <div class="passive"><span>Investigation</span><span id="passiveInvestigation" class="value-pill">10</span></div>
-        </div>
-        <h2>Saving Throws</h2>
-        <div class="check-head" aria-hidden="true"><span>Prof</span><span></span><span></span></div>
-        <div id="savingThrows" class="checklist"></div>
-        <h2>Skills</h2>
-        <div class="check-head" aria-hidden="true"><span>Prof</span><span></span><span title="Expertise">Exp</span></div>
-        <div id="skills" class="checklist"></div>
-      </section>
 
-      <section class="panel panel-traits">
-        <div class="traits-head">
-          <h2>Features & Traits</h2>
-          <button id="traitsSizeLockBtn" type="button" class="rich-btn traits-lock-btn">Lock Size</button>
-        </div>
-        <div class="rich-toolbar">
-          <button type="button" class="rich-btn" data-cmd="bold" data-target="traits" title="Bold"><strong>B</strong></button>
-          <button type="button" class="rich-btn" data-cmd="italic" data-target="traits" title="Italic"><em>I</em></button>
-          <button type="button" class="rich-btn" data-cmd="underline" data-target="traits" title="Underline"><u>U</u></button>
-          <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="traits" title="Bulleted List">• List</button>
-        </div>
-        <div id="traits" role="textbox" aria-multiline="true" aria-label="Features and traits" class="rich-input traits-textarea" contenteditable="true" data-placeholder="Class features, racial traits, feats, rage notes, build choices..."></div>
-      </section>
-
-      <section class="panel panel-other">
-        <h2>Proficiencies & Languages</h2>
-        <div class="rich-toolbar">
-          <button type="button" class="rich-btn" data-cmd="bold" data-target="proficiencies" title="Bold"><strong>B</strong></button>
-          <button type="button" class="rich-btn" data-cmd="italic" data-target="proficiencies" title="Italic"><em>I</em></button>
-          <button type="button" class="rich-btn" data-cmd="underline" data-target="proficiencies" title="Underline"><u>U</u></button>
-          <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="proficiencies" title="Bulleted List">• List</button>
-        </div>
-        <div id="proficiencies" role="textbox" aria-multiline="true" aria-label="Proficiencies and languages" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Weapons, armor, tools, languages..."></div>
-
-        <div class="section-heading">
-          <h2>Attacks & Spellcasting</h2>
-          <button id="addAttackBtn" type="button" class="add-attack-btn" title="Add Attack Row">+</button>
-        </div>
-        <div id="attacksTable" class="attacks-table"></div>
-
-        <div class="inventory-head">
-          <h2>Inventory & Currency</h2>
-          <button id="inventorySizeLockBtn" type="button" class="rich-btn inventory-lock-btn">Lock Size</button>
-        </div>
-        <div class="currency-grid">
-          <label>CP<input id="cp" type="number" min="0" value="0" /></label>
-          <label>SP<input id="sp" type="number" min="0" value="0" /></label>
-          <label>EP<input id="ep" type="number" min="0" value="0" /></label>
-          <label>GP<input id="gp" type="number" min="0" value="0" /></label>
-          <label>PP<input id="pp" type="number" min="0" value="0" /></label>
-        </div>
-        <div class="rich-toolbar">
-          <button type="button" class="rich-btn" data-cmd="bold" data-target="inventory" title="Bold"><strong>B</strong></button>
-          <button type="button" class="rich-btn" data-cmd="italic" data-target="inventory" title="Italic"><em>I</em></button>
-          <button type="button" class="rich-btn" data-cmd="underline" data-target="inventory" title="Underline"><u>U</u></button>
-          <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="inventory" title="Bulleted List">• List</button>
-        </div>
-        <div id="inventory" role="textbox" aria-multiline="true" aria-label="Inventory" class="rich-input inventory-textarea" contenteditable="true" data-placeholder="Items + GP/SP/CP..."></div>
-
-        <h2>Notes</h2>
-        <div class="rich-toolbar">
-          <button type="button" class="rich-btn" data-cmd="bold" data-target="notes" title="Bold"><strong>B</strong></button>
-          <button type="button" class="rich-btn" data-cmd="italic" data-target="notes" title="Italic"><em>I</em></button>
-          <button type="button" class="rich-btn" data-cmd="underline" data-target="notes" title="Underline"><u>U</u></button>
-          <button type="button" class="rich-btn" data-cmd="insertUnorderedList" data-target="notes" title="Bulleted List">• List</button>
-        </div>
-        <div id="notes" role="textbox" aria-multiline="true" aria-label="Notes" class="rich-input rich-input-sm" contenteditable="true" data-placeholder="Session notes, quests, roleplay hooks..."></div>
-      </section>
+      </div>
     </main>
 
-    <footer class="status-bar">
+    <footer class="statusbar">
       <span id="status" role="status" aria-live="polite">Ready.</span>
       <span id="saveState" class="save-state"></span>
     </footer>
