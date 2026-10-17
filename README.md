@@ -9,17 +9,23 @@ This project is a static web app (HTML/CSS/JavaScript):
 - `styles.css`
 - `app.js`
 - `battle.js`
+- `notes.js`
+- `store.js`
+- `tabs.js`
 
 Anyone can use it by opening `index.html` in a browser.
 
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
-2. Keep these 4 files in the same folder:
+2. Keep these 7 files in the same folder:
    - `index.html`
    - `styles.css`
    - `app.js`
    - `battle.js`
+   - `notes.js`
+   - `store.js`
+   - `tabs.js`
 3. Open `index.html` in a browser (Chrome, Edge, Safari, Firefox).
 
 No install, no server, no account needed.
@@ -70,7 +76,7 @@ Import when:
 - Initiative calculated from DEX plus an editable bonus
 - CP/SP/EP/GP/PP currency fields
 - Features & Traits and Weapon Mastery shown as cards (a blank line separates cards; use `Edit text` to change them)
-- Battle tab (see below)
+- Battle tab and Notes tab (see below)
 - Phone-friendly layout; long reference sections fold away
 - Dynamic attack rows (`+` button); empty slots stay hidden until you add one
 - Autosaves to your browser as you edit
@@ -97,6 +103,16 @@ It shows the attack total, hit or miss (a natural 20 is a critical hit, a natura
 - **Battle setup** holds each weapon's damage dice, type, Heavy, thrown, magic bonus, and mastery. The first time you open the tab it fills this in from your Attacks list; check it once, especially Heavy and mastery.
 - The rolls you type are scratch work and are not saved. The weapon setup is saved with your character and included in Export JSON.
 
+## Notes Tab
+
+The **Notes** tab keeps your campaign notes, sorted by session number, with fast search.
+
+- **Add notes** with New note: a session number, an optional title, and free text. Use `# Heading`, `- bullets`, and `**bold**` for a little structure. Notes save as you type.
+- **Search** finds every word you type (all of them must appear) in titles and text, with the matches highlighted. Use quotes for an exact phrase ("great axe"). Type a session number (like `12` or `session 12`) to jump to that session. You can also limit the search to a range of sessions, and sort by session, best match, or recently edited. Press `/` to jump to the search box.
+- **Import your old notes** with Import notes: paste the text (or choose .txt / .md files) and it splits into notes wherever a line starts with `Session 12`, `## Session 12: Title`, or `**Session 12**`. A preview shows what it found before anything is added, and notes you already have are skipped, so it is safe to import twice.
+- **Export** gives you a backup file (JSON) or plain text. The plain-text export can be imported again.
+- Notes are stored in your browser's database (IndexedDB), which has room for years of notes. They stay on this device and browser, so export a backup now and then; the Notes tab reminds you if it has been a while.
+
 ## Sharing This on GitHub
 
 This folder contains personal reference files (PDFs/.pages) and a character save file (`May7th.json`). The `.gitignore` in this repo excludes those by default, so they stay local and are never pushed.
@@ -122,11 +138,14 @@ Because this is a static app, hosting is straightforward.
 
 ### My friend opened the HTML file and it looks broken
 
-Make sure all 4 files are in the same folder:
+Make sure all 7 files are in the same folder:
 - `index.html`
 - `styles.css`
 - `app.js`
 - `battle.js`
+- `notes.js`
+- `store.js`
+- `tabs.js`
 
 ### My saved character disappeared
 

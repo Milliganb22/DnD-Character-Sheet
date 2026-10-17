@@ -800,7 +800,8 @@ function resetForm() {
   }
 
   document.querySelectorAll("input").forEach((el) => {
-    if (el.type === "radio" || el.type === "file") {
+    // Notes (and other tabs that store their own data) are not part of the character sheet.
+    if (el.type === "radio" || el.type === "file" || el.closest("[data-isolated]")) {
       return;
     }
     if (el.type === "checkbox") {
@@ -851,7 +852,7 @@ function resetForm() {
 function bindEvents() {
   document.body.addEventListener("input", (event) => {
     const target = event.target;
-    if (!target.matches("input, [contenteditable=\"true\"]")) {
+    if (!target.matches("input, [contenteditable=\"true\"]") || target.closest("[data-isolated]")) {
       return;
     }
     updateDerived({ skipClamp: target.id === "maxHp" || target.id === "level" });
@@ -1029,11 +1030,12 @@ function init() {
   buildChecklist("skills", SKILLS, true);
   buildAttacksTable();
   Battle.init();
+  Notes.init();
   bindEvents();
   loadFromLocal();
   renderAllCards();
   updateDerived();
-  Battle.start();
+  Tabs.start();
 
   // Reference folds start closed on phones so the page is not a wall of text.
   if (window.matchMedia("(max-width: 759px)").matches) {

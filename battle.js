@@ -377,7 +377,6 @@ const Battle = (() => {
     gwm: false,
     imported: false,
     selectedId: "",
-    tab: "sheet",
     rollMode: "normal",
     twoHanded: false,
     checkKind: "save:str",
@@ -458,7 +457,7 @@ const Battle = (() => {
     state.imported = Boolean(source.imported);
     state.selectedId = state.weapons[0] ? state.weapons[0].id : "";
     // A character file from before the Battle tab: set weapons up now if the Battle tab is open.
-    if (state.ready && state.tab === "battle" && !state.imported && state.weapons.length === 0) {
+    if (state.ready && isOpen() && !state.imported && state.weapons.length === 0) {
       importFromAttacks();
     }
     if (state.ready) {
@@ -509,37 +508,22 @@ const Battle = (() => {
     return weapons.length;
   }
 
-  // ---- tabs ----
+  // ---- tab hook ----
 
-  function showTab(name) {
-    state.tab = name === "battle" ? "battle" : "sheet";
-    const battle = state.tab === "battle";
-    $("battleTab").hidden = !battle;
-    $("sheetTab").hidden = battle;
-    document.body.dataset.tab = state.tab;
-    document.querySelectorAll(".tab").forEach((tab) => {
-      const active = tab.dataset.tab === state.tab;
-      tab.setAttribute("aria-selected", String(active));
-      tab.tabIndex = active ? 0 : -1;
-    });
-    if (battle) {
-      if (!state.imported && state.weapons.length === 0) {
-        const count = importFromAttacks();
-        setStatus(
-          count
-            ? `Set up ${count} weapons from your Attacks list. Check the details under Battle setup.`
-            : "No weapons found. Add one under Battle setup.",
-          count ? "status-ok" : ""
-        );
-      }
-      renderAll();
+  function onShow() {
+    if (!state.imported && state.weapons.length === 0) {
+      const count = importFromAttacks();
+      setStatus(
+        count
+          ? `Set up ${count} weapons from your Attacks list. Check the details under Battle setup.`
+          : "No weapons found. Add one under Battle setup.",
+        count ? "status-ok" : ""
+      );
     }
-    const hash = battle ? "#battle" : "#sheet";
-    if (location.hash !== hash) {
-      history.replaceState(null, "", hash);
-    }
-    window.scrollTo(0, 0);
+    renderAll();
   }
+
+  const isOpen = () => typeof Tabs !== "undefined" && Tabs.current() === "battle";
 
   // ---- rendering ----
 
@@ -554,7 +538,7 @@ const Battle = (() => {
   }
 
   function refresh() {
-    if (!state.ready || state.tab !== "battle") {
+    if (!state.ready || !isOpen()) {
       return;
     }
     renderModifiers();
@@ -986,23 +970,6 @@ const Battle = (() => {
   // ---- events ----
 
   function bind() {
-    document.querySelectorAll(".tab").forEach((tab) => {
-      tab.addEventListener("click", () => showTab(tab.dataset.tab));
-      tab.addEventListener("keydown", (event) => {
-        if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-          const next = state.tab === "sheet" ? "battle" : "sheet";
-          showTab(next);
-          document.querySelector(`.tab[data-tab="${next}"]`).focus();
-        }
-      });
-    });
-    window.addEventListener("hashchange", () => {
-      const wanted = location.hash === "#battle" ? "battle" : "sheet";
-      if (wanted !== state.tab) {
-        showTab(wanted);
-      }
-    });
-
     $("btRage").addEventListener("click", () => {
       $("isRaging").click();
       renderModifiers();
@@ -1193,15 +1160,11 @@ const Battle = (() => {
     }
     buildCheckOptions();
     bind();
+    Tabs.register("battle", { onShow });
     state.ready = true;
   }
 
-  // Called after saved data has loaded, so the first import of weapons sees the real Attacks list.
-  function start() {
-    showTab(location.hash === "#battle" ? "battle" : "sheet");
-  }
-
-  return { init, start, collect, apply, reset, refresh };
+  return { init, collect, apply, reset, refresh };
 })();
 
 if (typeof module !== "undefined" && module.exports) {

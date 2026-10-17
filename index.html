@@ -43,6 +43,7 @@
         <nav class="tabs" role="tablist" aria-label="Sheet sections">
           <button type="button" role="tab" class="tab" id="tabSheet" data-tab="sheet" aria-controls="sheetTab" aria-selected="true">Sheet</button>
           <button type="button" role="tab" class="tab" id="tabBattle" data-tab="battle" aria-controls="battleTab" aria-selected="false" tabindex="-1">Battle</button>
+          <button type="button" role="tab" class="tab" id="tabNotes" data-tab="notes" aria-controls="notesTab" aria-selected="false" tabindex="-1">Notes</button>
         </nav>
         <details class="file-menu">
           <summary>File</summary>
@@ -370,12 +371,85 @@
       </datalist>
     </section>
 
+
+    <section class="notes" id="notesTab" role="tabpanel" aria-labelledby="tabNotes" data-isolated hidden>
+      <p id="notesStorageWarning" class="warning" hidden>
+        Notes cannot be saved in this browser mode (a private window, or storage is blocked). What you add now will be lost when you close the page. Use Export to keep a copy.
+      </p>
+      <div id="notesBackup" class="backup-notice" hidden>
+        <span id="notesBackupText"></span>
+        <button id="notesBackupNow" type="button" class="chip-btn">Export a backup</button>
+      </div>
+      <div class="notes-layout" id="notesLayout">
+        <aside class="notes-list-pane" aria-label="Notes list">
+          <div class="notes-toolbar">
+            <div class="search-box" role="search">
+              <input id="notesSearch" type="search" placeholder="Search your notes: names, places, items..." aria-label="Search notes" autocomplete="off" />
+              <button id="notesSearchClear" type="button" class="chip-btn" aria-label="Clear search" hidden>Clear</button>
+            </div>
+            <div class="notes-controls">
+              <label class="field"><span>Sort</span>
+                <select id="notesSort">
+                  <option value="session-desc">Newest session</option>
+                  <option value="session-asc">Oldest session</option>
+                  <option value="match">Best match</option>
+                  <option value="recent">Recently edited</option>
+                </select>
+              </label>
+              <label class="field"><span>From</span><input id="notesFrom" type="number" min="0" inputmode="numeric" placeholder="session" aria-label="From session" /></label>
+              <label class="field"><span>To</span><input id="notesTo" type="number" min="0" inputmode="numeric" placeholder="session" aria-label="To session" /></label>
+            </div>
+            <div class="notes-actions">
+              <button id="notesNew" type="button" class="chip-btn primary">New note</button>
+              <button id="notesImportBtn" type="button" class="chip-btn">Import notes</button>
+              <details class="more-menu">
+                <summary>Export</summary>
+                <div class="more-menu-list">
+                  <button id="notesExportJson" type="button" class="menu-btn">Backup file (JSON)</button>
+                  <button id="notesExportText" type="button" class="menu-btn">Plain text</button>
+                </div>
+              </details>
+            </div>
+            <p id="notesSummary" class="muted" aria-live="polite"></p>
+            <p id="notesStatus" class="muted notes-status" aria-live="polite"></p>
+          </div>
+          <div id="notesList" class="notes-list"></div>
+        </aside>
+        <article class="notes-detail" id="notesDetail"></article>
+      </div>
+
+      <dialog id="notesImport" aria-labelledby="h-notesimport">
+        <h2 id="h-notesimport">Import notes</h2>
+        <p class="muted">Paste your notes or choose files (.txt, .md, or a backup you exported here). Notes are split wherever a line starts with "Session 12", "## Session 12: Title", or "**Session 12**".</p>
+        <label class="field"><span>Paste notes here</span><textarea id="importText" rows="9" placeholder="Session 1: The Road North&#10;You met at the tavern...&#10;&#10;Session 2&#10;..."></textarea></label>
+        <label class="field"><span>Or choose files</span><input type="file" id="importFiles" accept=".txt,.md,.markdown,.json,text/plain,application/json" multiple /></label>
+        <fieldset class="import-mode">
+          <legend>How to split</legend>
+          <label class="check-inline"><input type="radio" name="importMode" value="split" checked /> By session headings (recommended)</label>
+          <label class="check-inline"><input type="radio" name="importMode" value="single" /> Import each as one note</label>
+        </fieldset>
+        <div id="importSingleFields" class="editor-grid" hidden>
+          <label class="field"><span>Session #</span><input id="importSession" type="number" min="0" inputmode="numeric" /></label>
+          <label class="field grow"><span>Title (optional)</span><input id="importTitle" type="text" maxlength="200" /></label>
+        </div>
+        <label class="check-inline"><input type="checkbox" id="importSkipDupes" checked /> Skip notes I already have</label>
+        <div id="importPreview" class="import-preview" aria-live="polite"></div>
+        <div class="dialog-actions">
+          <button id="importRun" type="button" class="chip-btn primary" disabled>Import</button>
+          <button id="importCancel" type="button" class="chip-btn">Cancel</button>
+        </div>
+      </dialog>
+    </section>
+
     <footer class="statusbar">
       <span id="status" role="status" aria-live="polite">Ready.</span>
       <span id="saveState" class="save-state"></span>
     </footer>
 
+    <script src="tabs.js"></script>
+    <script src="store.js"></script>
     <script src="battle.js"></script>
+    <script src="notes.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
