@@ -1697,16 +1697,20 @@ select:focus-visible {
     order: 3;
   }
 
-  .o-bt-turn {
+  .o-bt-items {
     order: 4;
   }
 
-  .o-bt-numbers {
+  .o-bt-turn {
     order: 5;
   }
 
-  .o-bt-setup {
+  .o-bt-numbers {
     order: 6;
+  }
+
+  .o-bt-setup {
+    order: 7;
   }
 
   .tab {
@@ -2582,4 +2586,184 @@ dialog.viewer > * + * {
   .rules-topline .rules-hint {
     display: none;
   }
+}
+
+/* ---- Magic items ---- */
+.vital-effective {
+  display: block;
+  margin-top: 0.1rem;
+  font: 600 0.8rem var(--display);
+  color: var(--accent);
+}
+
+.items-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.o-items p,
+.o-bt-items p {
+  margin: 0.3rem 0;
+}
+
+.items-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.item-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 4px;
+}
+
+.item-card.is-worn {
+  border-left-color: var(--accent);
+}
+
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+}
+
+.item-head h3 {
+  margin: 0;
+  font: 700 1.2rem/1.2 var(--display);
+}
+
+.item-kind {
+  font-size: 0.85rem;
+}
+
+.item-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+}
+
+.item-use {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.8rem;
+}
+
+.item-use.is-locked {
+  opacity: 0.6;
+}
+
+.item-use-label {
+  flex: 1 1 11rem;
+}
+
+.item-use-buttons {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.item-use-note {
+  flex-basis: 100%;
+  font-size: 0.88rem;
+}
+
+.item-stage {
+  padding: 0.5rem 0.6rem;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+}
+
+.item-stage p {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+}
+
+.item-stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+}
+
+.item-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.item-days input {
+  width: 4.5rem;
+}
+
+.item-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.item-notes {
+  padding-top: 0.3rem;
+  font: 400 0.98rem/1.5 var(--prose);
+}
+
+.item-notes ul {
+  margin: 0.2rem 0 0.4rem;
+  padding-left: 1.2rem;
+}
+
+.item-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.item-edit {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--line);
+}
+
+.item-edit-use {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4rem minmax(0, 7rem) auto;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.item-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.item-chips {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.4rem 0;
+}
+
+.item-chip {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.92rem;
+  background: rgba(217, 164, 65, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+}
+
+.is-compact .item-card,
+.items-list.is-compact .item-card {
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.item-stage-line {
+  margin: 0;
+  font-size: 0.88rem;
 }

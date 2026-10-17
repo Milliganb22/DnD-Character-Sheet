@@ -134,6 +134,9 @@ function computeAttack(weapon, rolls, ctx) {
   if (ctx.rollMode === "dis") {
     disadvantageFrom.push("other effect");
   }
+  if (weapon.disadvantage) {
+    disadvantageFrom.push(weapon.disadvantage);
+  }
   const { state, first, second, natural, needSecond } = resolveD20(advantageFrom, disadvantageFrom, rolls);
 
   const total = natural === null ? null : natural + attackBonus;
@@ -159,7 +162,8 @@ function computeAttack(weapon, rolls, ctx) {
   const multiplier = crit ? 2 : 1;
   const useVersatile = Boolean(ctx.twoHanded && weapon.versatile);
   const mainInstruction = diceText(useVersatile ? weapon.versatile : weapon.dice, multiplier);
-  const extraInstruction = weapon.extraDice ? diceText(weapon.extraDice, multiplier) : "";
+  const extraSource = useVersatile && weapon.versatileExtra ? weapon.versatileExtra : weapon.extraDice;
+  const extraInstruction = extraSource ? diceText(extraSource, multiplier) : "";
   const mainRolled = toWholeNumber(rolls.dice, 0, 999);
   const extraRolled = toWholeNumber(rolls.extra, 0, 999);
   const needsExtra = Boolean(extraInstruction);
@@ -244,10 +248,17 @@ function computeCheck(spec, rolls, ctx) {
   if (multiplier) {
     parts.push({ label: multiplier === 2 ? "Expertise" : "Proficiency", value: multiplier * ctx.prof });
   }
+  const itemBonus = spec.kind === "skill" && ctx.itemSkillBonus ? ctx.itemSkillBonus[spec.skill] || 0 : 0;
+  if (itemBonus) {
+    parts.push({ label: "Magic item", value: itemBonus });
+  }
   const bonus = sumValues(parts);
 
   const advantageFrom = [];
   const disadvantageFrom = [];
+  if (spec.kind === "save" && baseAbility === "dex" && ctx.saveAdvantage && ctx.saveAdvantage.dex) {
+    ctx.saveAdvantage.dex.forEach((source) => advantageFrom.push(source));
+  }
   if (ctx.raging && abilityKey === "str") {
     advantageFrom.push("Rage");
   }
@@ -434,8 +445,14 @@ const Battle = (() => {
     };
   }
 
+  // Some weapons take their dice and bonuses from a magic item (the Colossus Greatsword, Festus's Forge).
+  function effective(weapon) {
+    return typeof Items !== "undefined" ? Items.weapon(weapon) : weapon;
+  }
+
   function selectedWeapon() {
-    return state.weapons.find((w) => w.id === state.selectedId) || state.weapons[0] || null;
+    const weapon = state.weapons.find((w) => w.id === state.selectedId) || state.weapons[0] || null;
+    return weapon ? effective(weapon) : null;
   }
 
   function save() {
@@ -542,6 +559,7 @@ const Battle = (() => {
       return;
     }
     renderModifiers();
+    renderPicker();
     renderTurn();
     renderNumbers();
     renderResult();
@@ -585,7 +603,7 @@ const Battle = (() => {
       return;
     }
     const chosen = selectedWeapon();
-    state.weapons.forEach((weapon) => {
+    state.weapons.map(effective).forEach((weapon) => {
       const active = chosen && weapon.id === chosen.id;
       const button = el(
         "button",
@@ -858,6 +876,8 @@ const Battle = (() => {
         raging: $("isRaging").checked,
         level: level(),
         dangerSense: dangerPossible && state.danger,
+        saveAdvantage: Items.effects().saveAdvantage,
+        itemSkillBonus: Items.effects().skillBonus,
         rollMode: state.checkMode
       }
     );
@@ -943,6 +963,9 @@ const Battle = (() => {
     return el(
       "div",
       { class: "weapon-card", "data-card": weapon.id },
+      effective(weapon).fromItem
+        ? el("p", { class: "muted", text: `Dice, damage type and bonuses for this weapon come from your item "${effective(weapon).fromItem}" under Magic items. The values below are only used if you delete that item.` })
+        : null,
       el(
         "div",
         { class: "weapon-card-grid" },

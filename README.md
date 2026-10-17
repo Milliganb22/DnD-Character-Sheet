@@ -8,6 +8,7 @@ This project is a static web app (HTML/CSS/JavaScript):
 - `index.html`
 - `styles.css`
 - `app.js`
+- `items.js`
 - `battle.js`
 - `notes.js`
 - `maps.js`
@@ -22,10 +23,11 @@ Anyone can use it by opening `index.html` in a browser.
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
-2. Keep these 11 files in the same folder:
+2. Keep these 12 files in the same folder:
    - `index.html`
    - `styles.css`
    - `app.js`
+   - `items.js`
    - `battle.js`
    - `notes.js`
    - `maps.js`
@@ -131,6 +133,19 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 - **Backup** downloads every map and its details as one .zip. To restore (or move to another browser), choose that .zip with Import images. Maps you already have are skipped.
 - Maps are stored in your browser's database on this device, so download a backup now and then; the tab reminds you if it has been a while.
 
+## Magic Items
+
+The **Magic items** panel (Sheet tab, and a short version on the Battle tab) tracks your special objects. Choose **Add my objects** to add the Colossus Greatsword, Festus's Forge, Boots of Haste, Riverstone of Subtle Persuasion and Alchemy Jug from your object sheet. **Add item** makes your own.
+
+- **Attuned** (up to 3 at a time) and **Wielding / Wearing / Carrying** switches for each item.
+- Charges and daily uses (Heat Metal, Great Rend, Titan's Swing, Haste, the jug's daily liquid) with **Use** and **Undo**. The **Short rest** and **Long rest** buttons also give back rages and end Haste.
+- **Boots of Haste:** put them on, attune, then **Activate Haste**. AC (+2), Speed (doubled) and Dexterity saves (Advantage) update in the top bar, the saving throws list and the Battle tab until you **End Haste**.
+- **Colossus Greatsword:** keep a count of training days. The training stage sets the Speed penalty, the attack Disadvantage at stage 1, when Great Rend (stage 3) and Titan's Swing (stage 4) unlock, and the 4d6 damage at stage 4. Set **Days trained** to where you really are.
+- **Festus's Forge:** fire resistance while attuned, and in Battle the hammer uses 1d10 + 1d4 fire one-handed or 1d12 + 1d6 fire two-handed.
+- **Riverstone:** +1 to Deception and Persuasion while carried.
+- Battle weapons named like these items (Colossus or Collosus, Forge hammer or Festus) take their dice and bonuses from the item.
+- Every item has a description you can open and edit, plus a button to restore it to the object sheet text.
+
 ## Rules Tab
 
 Search the free D&D 2024 rules without leaving the sheet. Type a word or a whole question ("what does fireball do", "grappled", "fire giant", "opportunity attack") and the best matches come first. Spelling mistakes are forgiven when the word is not found anywhere else.
@@ -174,10 +189,11 @@ Because this is a static app, hosting is straightforward.
 
 ### My friend opened the HTML file and it looks broken
 
-Make sure all 11 files are in the same folder:
+Make sure all 12 files are in the same folder:
 - `index.html`
 - `styles.css`
 - `app.js`
+- `items.js`
 - `battle.js`
 - `notes.js`
 - `maps.js`

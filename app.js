@@ -329,6 +329,7 @@ function getData() {
 
   data.attacks = collectAttackRows();
   data.battle = Battle.collect();
+  data.items = Items.collect();
   data.rageUseSpent = rageUseSpent;
   return data;
 }
@@ -394,6 +395,7 @@ function setData(data) {
 
   const attackRows = Array.isArray(data.attacks) ? data.attacks : parseLegacyAttacks(data);
   buildAttacksTable(attackRows);
+  Items.apply(data.items);
   Battle.apply(data.battle);
 
   renderAllCards();
@@ -620,6 +622,7 @@ function updateDerived({ skipClamp = false } = {}) {
   const rageBonus = isRaging ? rageDamageByLevel(level) : 0;
   const hasPrimalKnowledge = isRaging && level >= 3;
 
+  const fx = Items.effects();
   const abilityMods = {};
   ABILITIES.forEach((ab) => {
     const score = Number(document.getElementById(ab.key).value) || 10;
@@ -631,7 +634,7 @@ function updateDerived({ skipClamp = false } = {}) {
   SAVES.forEach((s) => {
     const proficient = document.getElementById(`${s.key}Prof`).checked;
     const total = abilityMods[s.ability] + (proficient ? prof : 0);
-    const advText = isRaging && s.ability === "str" ? " (Adv)" : "";
+    const advText = (isRaging && s.ability === "str") || (s.ability === "dex" && fx.saveAdvantage.dex.length) ? " (Adv)" : "";
     document.getElementById(`${s.key}Val`).textContent = `${formatSigned(total)}${advText}`;
   });
 
@@ -639,10 +642,11 @@ function updateDerived({ skipClamp = false } = {}) {
     const proficient = document.getElementById(`${s.key}Prof`).checked;
     const expertise = document.getElementById(`${s.key}Expert`).checked;
     const profMult = expertise ? 2 : proficient ? 1 : 0;
-    const baseTotal = abilityMods[s.ability] + profMult * prof;
+    const itemBonus = fx.skillBonus[s.key] || 0;
+    const baseTotal = abilityMods[s.ability] + profMult * prof + itemBonus;
 
     if (hasPrimalKnowledge && PRIMAL_KNOWLEDGE_SKILLS.has(s.key) && s.ability !== "str") {
-      const strTotal = abilityMods.str + profMult * prof;
+      const strTotal = abilityMods.str + profMult * prof + itemBonus;
       document.getElementById(`${s.key}Val`).textContent = `${formatSigned(baseTotal)} / STR ${formatSigned(strTotal)} (Adv)`;
       return;
     }
@@ -701,9 +705,25 @@ function updateDerived({ skipClamp = false } = {}) {
     rageEffectsEl.open = isRaging;
   }
 
+  updateItemVitals(fx);
   updateHeaderAndVitals();
   document.getElementById("undoRageBtn").hidden = !(isRaging && rageUseSpent);
   Battle.refresh();
+}
+
+// Shows AC and Speed as they are with items on (Haste, the Colossus Greatsword's burden) next to the numbers you typed.
+function updateItemVitals(fx) {
+  const ac = Number(document.getElementById("ac").value) || 0;
+  const speed = Number(document.getElementById("speed").value) || 0;
+  const acNow = ac + fx.acBonus;
+  const speedNow = Math.max(0, speed - fx.speedPenalty) * fx.speedMultiplier;
+  const show = (id, changedValue, text) => {
+    const node = document.getElementById(id);
+    node.hidden = !changedValue;
+    node.textContent = changedValue ? text : "";
+  };
+  show("acEffective", acNow !== ac, `${acNow} with items`);
+  show("speedEffective", speedNow !== speed, `${speedNow} ft with items`);
 }
 
 function setStatus(message, type = "") {
@@ -835,6 +855,7 @@ function resetForm() {
 
   buildAttacksTable();
   Battle.reset();
+  Items.reset();
   rageUseSpent = false;
   clearTimeout(saveTimer);
   saveTimer = null;
@@ -899,7 +920,8 @@ function bindEvents() {
     rageUseSpent = false;
     updateDerived();
     scheduleSave();
-    setStatus("Short rest: regained one rage.", "status-ok");
+    Items.shortRest();
+    setStatus("Short rest: regained one rage and reset short-rest counters.", "status-ok");
   });
 
   document.getElementById("rageLongRestBtn").addEventListener("click", () => {
@@ -908,7 +930,9 @@ function bindEvents() {
     rageUseSpent = false;
     updateDerived();
     scheduleSave();
-    setStatus("Long rest: all rages regained.", "status-ok");
+    Items.longRest();
+    updateDerived();
+    setStatus("Long rest: all rages and item charges regained, and Haste ended.", "status-ok");
   });
 
   document.addEventListener("visibilitychange", () => {
@@ -1029,6 +1053,7 @@ function init() {
   buildChecklist("savingThrows", SAVES, false);
   buildChecklist("skills", SKILLS, true);
   buildAttacksTable();
+  Items.init();
   Battle.init();
   Notes.init();
   Maps.init();

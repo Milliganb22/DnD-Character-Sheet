@@ -74,6 +74,7 @@
       <label class="vital vital-ac">
         <span class="vital-label">AC</span>
         <input id="ac" type="number" min="0" value="10" inputmode="numeric" />
+        <span class="vital-effective" id="acEffective" hidden></span>
       </label>
 
       <label class="vital vital-init">
@@ -84,6 +85,7 @@
       <label class="vital vital-speed">
         <span class="vital-label">Speed</span>
         <input id="speed" type="number" min="0" value="30" inputmode="numeric" />
+        <span class="vital-effective" id="speedEffective" hidden></span>
       </label>
 
       <div class="vital vital-rage">
@@ -175,6 +177,22 @@
             </details>
           </section>
 
+
+          <section class="panel check o-items" aria-labelledby="h-items" data-isolated>
+            <div class="panel-head">
+              <h2 id="h-items">Magic items</h2>
+              <span id="itemsAttuned" class="muted"></span>
+            </div>
+            <div class="items-bar">
+              <button id="itemsAddMine" type="button" class="chip-btn primary">Add my objects</button>
+              <button id="itemsAddCustom" type="button" class="chip-btn">Add item</button>
+              <button id="itemsShortRest" type="button" class="chip-btn" title="Short rest: regain one rage and reset short-rest counters">Short rest</button>
+              <button id="itemsLongRest" type="button" class="chip-btn" title="Long rest: regain all rages and item charges, and end Haste">Long rest</button>
+            </div>
+            <p id="itemsNotice" class="muted" aria-live="polite"></p>
+            <div id="itemsChips" class="item-chips" hidden></div>
+            <div id="itemsList" class="items-list"></div>
+          </section>
 
         <details class="panel check fold o-prof" open>
           <summary><h2>Proficiencies and languages</h2></summary>
@@ -303,6 +321,12 @@
             </div>
             <div id="btTurnChips" class="turn-chips"></div>
             <p class="muted">Attacks this action: <strong id="btAttackCount">0 of 1</strong></p>
+          </section>
+
+          <section class="panel act o-bt-items" id="btItemsPanel" aria-labelledby="h-btitems" data-isolated hidden>
+            <h2 id="h-btitems">Magic items</h2>
+            <div id="btItemChips" class="item-chips" hidden></div>
+            <div id="btItems" class="items-list is-compact"></div>
           </section>
 
           <section class="panel check o-bt-numbers" aria-labelledby="h-btnumbers">
@@ -582,6 +606,7 @@
     <script src="tabs.js"></script>
     <script src="store.js"></script>
     <script src="zip.js"></script>
+    <script src="items.js"></script>
     <script src="battle.js"></script>
     <script src="notes.js"></script>
     <script src="maps.js"></script>
