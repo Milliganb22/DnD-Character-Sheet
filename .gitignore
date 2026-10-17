@@ -2,3 +2,4 @@
 *.pdf
 *.pages
 *.json
+!tools/source/*.json

@@ -1032,6 +1032,7 @@ function init() {
   Battle.init();
   Notes.init();
   Maps.init();
+  Rules.init();
   bindEvents();
   loadFromLocal();
   renderAllCards();

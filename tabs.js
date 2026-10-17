@@ -5,6 +5,7 @@
 const Tabs = (() => {
   const handlers = new Map();
   let current = "sheet";
+  let previous = null;
   let bound = false;
 
   function register(name, callbacks = {}) {
@@ -18,6 +19,9 @@ const Tabs = (() => {
   function show(name) {
     if (!tabButtons().some((tab) => tab.dataset.tab === name)) {
       name = "sheet";
+    }
+    if (name !== current) {
+      previous = current;
     }
     current = name;
     tabButtons().forEach((tab) => {
@@ -84,5 +88,5 @@ const Tabs = (() => {
     show(nameFromHash());
   }
 
-  return { register, show, start, current: () => current };
+  return { register, show, start, current: () => current, previous: () => previous };
 })();

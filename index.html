@@ -45,6 +45,7 @@
           <button type="button" role="tab" class="tab" id="tabBattle" data-tab="battle" aria-controls="battleTab" aria-selected="false" tabindex="-1">Battle</button>
           <button type="button" role="tab" class="tab" id="tabNotes" data-tab="notes" aria-controls="notesTab" aria-selected="false" tabindex="-1">Notes</button>
           <button type="button" role="tab" class="tab" id="tabMaps" data-tab="maps" aria-controls="mapsTab" aria-selected="false" tabindex="-1">Maps</button>
+          <button type="button" role="tab" class="tab" id="tabRules" data-tab="rules" aria-controls="rulesTab" aria-selected="false" tabindex="-1">Rules</button>
         </nav>
         <details class="file-menu">
           <summary>File</summary>
@@ -519,6 +520,60 @@
       </dialog>
     </section>
 
+    <section class="rules-tab" id="rulesTab" role="tabpanel" aria-labelledby="tabRules" data-isolated hidden>
+      <p id="rulesStorageWarning" class="warning" hidden>
+        My library cannot be saved in this browser mode (a private window, or storage is blocked). The built-in rules still work.
+      </p>
+      <div class="notes-layout" id="rulesLayout">
+        <aside class="notes-list-pane" aria-label="Rules search">
+          <div class="notes-toolbar">
+            <div class="rules-topline">
+              <button id="rulesReturn" type="button" class="chip-btn" hidden></button>
+              <span class="muted rules-hint">Press Ctrl+K or Cmd+K on any tab to search the rules.</span>
+            </div>
+            <div class="search-box" role="search">
+              <input id="rulesSearch" type="search" placeholder="Ask a rules question: fireball, grappled, fire giant..." aria-label="Search the rules" autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <button id="rulesSearchClear" type="button" class="chip-btn" aria-label="Clear search" hidden>Clear</button>
+            </div>
+            <div class="rules-controls">
+              <label class="field"><span>Look in</span>
+                <select id="rulesKind">
+                  <option value="all">Everything</option>
+                  <option value="spells">Spells</option>
+                  <option value="monsters">Monsters</option>
+                  <option value="conditions">Conditions</option>
+                  <option value="rules">Rules and glossary</option>
+                  <option value="classes">Classes and features</option>
+                  <option value="items">Items and gear</option>
+                  <option value="character">Species, feats, backgrounds</option>
+                  <option value="mine">My library</option>
+                </select>
+              </label>
+              <details class="more-menu">
+                <summary>My library</summary>
+                <div class="more-menu-list">
+                  <button id="libNew" type="button" class="menu-btn">Add an entry</button>
+                  <button id="libImport" type="button" class="menu-btn">Import text files</button>
+                  <button id="libExport" type="button" class="menu-btn">Export as text</button>
+                </div>
+              </details>
+              <input id="libFiles" type="file" accept=".txt,.md,.markdown,text/plain" multiple hidden />
+            </div>
+            <p id="rulesSummary" class="muted" aria-live="polite"></p>
+            <p id="rulesStatus" class="muted notes-status" aria-live="polite"></p>
+          </div>
+          <div id="rulesList" class="notes-list"></div>
+        </aside>
+        <article class="notes-detail" id="rulesDetail"></article>
+      </div>
+      <p class="rules-credit muted">
+        Rules text comes from the free System Reference Document 5.2. This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at
+        <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener noreferrer">dndbeyond.com/srd</a>. The SRD 5.2 is licensed under the
+        <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">Creative Commons Attribution 4.0 International License</a>.
+        It does not include every book: use My library for rules from other sourcebooks or your own subclass.
+      </p>
+    </section>
+
     <footer class="statusbar">
       <span id="status" role="status" aria-live="polite">Ready.</span>
       <span id="saveState" class="save-state"></span>
@@ -530,6 +585,7 @@
     <script src="battle.js"></script>
     <script src="notes.js"></script>
     <script src="maps.js"></script>
+    <script src="rules.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

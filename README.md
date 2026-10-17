@@ -11,6 +11,8 @@ This project is a static web app (HTML/CSS/JavaScript):
 - `battle.js`
 - `notes.js`
 - `maps.js`
+- `rules.js`
+- `rules-data.js`
 - `store.js`
 - `tabs.js`
 - `zip.js`
@@ -20,13 +22,15 @@ Anyone can use it by opening `index.html` in a browser.
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
-2. Keep these 9 files in the same folder:
+2. Keep these 11 files in the same folder:
    - `index.html`
    - `styles.css`
    - `app.js`
    - `battle.js`
    - `notes.js`
    - `maps.js`
+   - `rules.js`
+   - `rules-data.js`
    - `store.js`
    - `tabs.js`
    - `zip.js`
@@ -127,6 +131,24 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 - **Backup** downloads every map and its details as one .zip. To restore (or move to another browser), choose that .zip with Import images. Maps you already have are skipped.
 - Maps are stored in your browser's database on this device, so download a backup now and then; the tab reminds you if it has been a while.
 
+## Rules Tab
+
+Search the free D&D 2024 rules without leaving the sheet. Type a word or a whole question ("what does fireball do", "grappled", "fire giant", "opportunity attack") and the best matches come first. Spelling mistakes are forgiven when the word is not found anywhere else.
+
+- Press **Ctrl+K** (or **Cmd+K** on a Mac) on any tab to jump to the search box. **Back to ...** returns you to the tab you came from, such as Battle.
+- Use **Look in** to narrow to spells, monsters, conditions, rules and glossary, classes and features, items and gear, or species, feats and backgrounds.
+- Shortcuts like AC, HP, DC and AoO are understood.
+- Press Enter to open the top result. On a phone, **Back to results** returns to the list.
+- Every result has links to search D&D Beyond and the 5e wiki in a new tab, for anything the free rules do not cover.
+
+**My library** is for rules that are not in the free SRD, such as your subclass or house rules. Add an entry, or import `.txt` or `.md` files (a line starting with `# Title` begins a new entry). Your entries are searched together with the built-in rules. They are saved in the browser only, so use **Export as text** now and then to keep a copy.
+
+The built-in data (`rules-data.js`, about 1.3 MB) is the System Reference Document 5.2, the free version of the 2024 rules. It does not contain the full Player's Handbook, Dungeon Master's Guide or Monster Manual, and the official books and wiki sites cannot be copied into this project. To rebuild the data, run `node tools/build-rules.js` (it downloads the SRD data files from the 5e-bits/5e-database project; the glossary text and rule sections in `tools/source` came from the official SRD 5.2 document and the Open5e project).
+
+### Attribution
+
+This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
 ## Sharing This on GitHub
 
 This folder contains personal reference files (PDFs/.pages) and a character save file (`May7th.json`). The `.gitignore` in this repo excludes those by default, so they stay local and are never pushed.
@@ -152,13 +174,15 @@ Because this is a static app, hosting is straightforward.
 
 ### My friend opened the HTML file and it looks broken
 
-Make sure all 9 files are in the same folder:
+Make sure all 11 files are in the same folder:
 - `index.html`
 - `styles.css`
 - `app.js`
 - `battle.js`
 - `notes.js`
 - `maps.js`
+- `rules.js`
+- `rules-data.js`
 - `store.js`
 - `tabs.js`
 - `zip.js`

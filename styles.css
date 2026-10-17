@@ -1772,7 +1772,9 @@ select:focus-visible {
 body[data-tab="notes"] .vitals,
 body[data-tab="notes"] .death-strip,
 body[data-tab="maps"] .vitals,
-body[data-tab="maps"] .death-strip {
+body[data-tab="maps"] .death-strip,
+body[data-tab="rules"] .vitals,
+body[data-tab="rules"] .death-strip {
   display: none;
 }
 
@@ -1922,6 +1924,7 @@ mark {
 
 .note-items {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.25rem;
   margin: 0;
   padding: 0;
@@ -2475,4 +2478,108 @@ dialog.viewer > * + * {
 
 .viewer-loading[hidden] {
   display: none;
+}
+
+/* ---- Rules ---- */
+.rules-tab {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 2.5rem;
+}
+
+.rules-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+}
+
+.rules-topline .rules-hint {
+  font-size: 0.85rem;
+}
+
+.rules-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.rules-empty {
+  padding: 1rem 0.3rem;
+}
+
+.rules-empty h2 {
+  margin-bottom: 0.4rem;
+}
+
+.rules-empty p {
+  margin: 0.4rem 0;
+}
+
+.rules-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.rules-links {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+}
+
+.rules-links a,
+.rules-credit a {
+  color: var(--accent);
+}
+
+.rules-credit {
+  max-width: 80ch;
+  margin: 1.2rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.rules-body h3,
+.rules-body h4,
+.rules-body h5 {
+  color: var(--accent);
+}
+
+.rules-table-wrap {
+  max-width: 100%;
+  margin: 0.4rem 0 1rem;
+  overflow-x: auto;
+}
+
+.rules-table {
+  border-collapse: collapse;
+  font: 400 0.95rem/1.4 var(--prose);
+}
+
+.rules-table th,
+.rules-table td {
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  border: 1px solid var(--line);
+}
+
+.rules-table th {
+  color: var(--accent);
+  background: var(--raised);
+}
+
+#rulesTab .note-editor textarea {
+  min-height: 40vh;
+}
+
+@media (max-width: 759px) {
+  .rules-tab {
+    padding: 0.6rem 0.7rem 2rem;
+  }
+
+  .rules-topline .rules-hint {
+    display: none;
+  }
 }
