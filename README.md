@@ -8,16 +8,18 @@ This project is a static web app (HTML/CSS/JavaScript):
 - `index.html`
 - `styles.css`
 - `app.js`
+- `battle.js`
 
 Anyone can use it by opening `index.html` in a browser.
 
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
-2. Keep these 3 files in the same folder:
+2. Keep these 4 files in the same folder:
    - `index.html`
    - `styles.css`
    - `app.js`
+   - `battle.js`
 3. Open `index.html` in a browser (Chrome, Edge, Safari, Firefox).
 
 No install, no server, no account needed.
@@ -68,12 +70,29 @@ Import when:
 - Initiative calculated from DEX plus an editable bonus
 - CP/SP/EP/GP/PP currency fields
 - Features & Traits and Weapon Mastery shown as cards (a blank line separates cards; use `Edit text` to change them)
+- Battle tab (see below)
 - Phone-friendly layout; long reference sections fold away
 - Dynamic attack rows (`+` button); empty slots stay hidden until you add one
 - Autosaves to your browser as you edit
 - Import/Export JSON
 
 Note: the sheet loads its fonts from Google Fonts, so it falls back to system fonts when offline.
+
+## Battle Tab
+
+Open the **Battle** tab (top right) when a fight starts. Roll your own dice, type in what you rolled, and the sheet does the rest:
+
+1. Pick a weapon.
+2. Enter your **d20** (and the **target's AC** if you know it).
+3. Enter your **damage dice** total (and the extra dice for weapons that have them, like fire damage).
+
+It shows the attack total, hit or miss (a natural 20 is a critical hit, a natural 1 always misses), the final damage with a breakdown by type, and the mastery effect to apply (Cleave, Graze, Push, Topple, and so on). Critical hits double the dice and add modifiers once.
+
+- **Rage** and **Reckless Attack** buttons change the numbers (Rage damage, advantage). Roll mode covers advantage and disadvantage; enter both d20s and it uses the right one.
+- **Turn** tracks your Action, Bonus action, Reaction, and attacks per action. **Next attack** clears the rolls for the next swing.
+- **Your numbers** shows AC, HP, saves, and Rage effects from the sheet.
+- **Battle setup** holds each weapon's damage dice, type, Heavy, thrown, magic bonus, and mastery. The first time you open the tab it fills this in from your Attacks list; check it once, especially Heavy and mastery.
+- The rolls you type are scratch work and are not saved. The weapon setup is saved with your character and included in Export JSON.
 
 ## Sharing This on GitHub
 
@@ -100,10 +119,11 @@ Because this is a static app, hosting is straightforward.
 
 ### My friend opened the HTML file and it looks broken
 
-Make sure all 3 files are in the same folder:
+Make sure all 4 files are in the same folder:
 - `index.html`
 - `styles.css`
 - `app.js`
+- `battle.js`
 
 ### My saved character disappeared
 

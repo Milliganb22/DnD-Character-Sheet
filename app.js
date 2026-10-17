@@ -327,6 +327,7 @@ function getData() {
   });
 
   data.attacks = collectAttackRows();
+  data.battle = Battle.collect();
   return data;
 }
 
@@ -390,6 +391,7 @@ function setData(data) {
 
   const attackRows = Array.isArray(data.attacks) ? data.attacks : parseLegacyAttacks(data);
   buildAttacksTable(attackRows);
+  Battle.apply(data.battle);
 
   renderAllCards();
   updateDerived();
@@ -676,6 +678,7 @@ function updateDerived({ skipClamp = false } = {}) {
   }
 
   updateHeaderAndVitals();
+  Battle.refresh();
 }
 
 function setStatus(message, type = "") {
@@ -805,6 +808,7 @@ function resetForm() {
   document.querySelector('input[name="hpAdjustMode"][value="damage"]').checked = true;
 
   buildAttacksTable();
+  Battle.reset();
   clearTimeout(saveTimer);
   saveTimer = null;
   setSaveState("");
@@ -825,7 +829,7 @@ function bindEvents() {
       return;
     }
     updateDerived({ skipClamp: target.id === "maxHp" || target.id === "level" });
-    if (target.id !== "hpAdjustAmount" && target.name !== "hpAdjustMode") {
+    if (target.id !== "hpAdjustAmount" && target.name !== "hpAdjustMode" && !target.closest("[data-nosave]")) {
       scheduleSave();
     }
   });
@@ -988,10 +992,12 @@ function init() {
   buildChecklist("savingThrows", SAVES, false);
   buildChecklist("skills", SKILLS, true);
   buildAttacksTable();
+  Battle.init();
   bindEvents();
   loadFromLocal();
   renderAllCards();
   updateDerived();
+  Battle.start();
 
   // Reference folds start closed on phones so the page is not a wall of text.
   if (window.matchMedia("(max-width: 759px)").matches) {

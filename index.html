@@ -39,16 +39,22 @@
         </div>
       </div>
 
-      <details class="file-menu">
-        <summary>File</summary>
-        <div class="file-menu-list">
-          <button id="saveBtn" class="menu-btn" type="button">Save now</button>
-          <button id="exportBtn" class="menu-btn" type="button">Export JSON</button>
-          <label class="menu-btn" for="importFile">Import JSON</label>
-          <input id="importFile" type="file" accept="application/json" hidden />
-          <button id="resetBtn" class="menu-btn menu-danger" type="button">Reset sheet</button>
-        </div>
-      </details>
+      <div class="top-actions">
+        <nav class="tabs" role="tablist" aria-label="Sheet sections">
+          <button type="button" role="tab" class="tab" id="tabSheet" data-tab="sheet" aria-controls="sheetTab" aria-selected="true">Sheet</button>
+          <button type="button" role="tab" class="tab" id="tabBattle" data-tab="battle" aria-controls="battleTab" aria-selected="false" tabindex="-1">Battle</button>
+        </nav>
+        <details class="file-menu">
+          <summary>File</summary>
+          <div class="file-menu-list">
+            <button id="saveBtn" class="menu-btn" type="button">Save now</button>
+            <button id="exportBtn" class="menu-btn" type="button">Export JSON</button>
+            <label class="menu-btn" for="importFile">Import JSON</label>
+            <input id="importFile" type="file" accept="application/json" hidden />
+            <button id="resetBtn" class="menu-btn menu-danger" type="button">Reset sheet</button>
+          </div>
+        </details>
+      </div>
     </header>
 
     <section class="vitals" aria-label="Vitals">
@@ -121,7 +127,7 @@
       <button id="clearDeathSavesBtn" type="button" class="chip-btn">Clear</button>
     </section>
 
-    <main class="sheet">
+    <main class="sheet" id="sheetTab" role="tabpanel" aria-labelledby="tabSheet">
       <section class="panel abilities-panel o-abilities" aria-label="Abilities">
         <div id="abilityCards" class="ability-cards"></div>
         <div class="passives" aria-label="Passive senses">
@@ -258,11 +264,91 @@
       </div>
     </main>
 
+    <section class="battle" id="battleTab" role="tabpanel" aria-labelledby="tabBattle" hidden>
+      <div class="battle-cols">
+        <div class="battle-side">
+          <section class="panel act o-bt-mods" aria-labelledby="h-btmods" data-nosave>
+            <h2 id="h-btmods">This turn</h2>
+            <div class="toggle-row">
+              <button id="btRage" type="button" class="toggle-btn rage-big" aria-pressed="false">
+                <span class="toggle-title">Start Rage</span>
+                <span class="toggle-sub"></span>
+              </button>
+              <button id="btReckless" type="button" class="toggle-btn" aria-pressed="false" hidden>
+                <span class="toggle-title">Reckless Attack</span>
+                <span class="toggle-sub">Advantage on Strength melee</span>
+              </button>
+            </div>
+            <p id="btRecklessWarning" class="warning" hidden>Reckless: attacks against you have Advantage until your next turn.</p>
+            <fieldset id="btRollMode" class="seg">
+              <legend>Attack roll</legend>
+              <label><input type="radio" name="btRollMode" value="normal" checked /><span>Normal</span></label>
+              <label><input type="radio" name="btRollMode" value="adv" /><span>Advantage</span></label>
+              <label><input type="radio" name="btRollMode" value="dis" /><span>Disadvantage</span></label>
+            </fieldset>
+          </section>
+
+          <section class="panel check o-bt-turn" aria-labelledby="h-btturn">
+            <div class="panel-head">
+              <h2 id="h-btturn">Turn</h2>
+              <button id="btNewTurn" type="button" class="chip-btn">New turn</button>
+            </div>
+            <div id="btTurnChips" class="turn-chips"></div>
+            <p class="muted">Attacks this action: <strong id="btAttackCount">0 of 1</strong></p>
+          </section>
+
+          <section class="panel check o-bt-numbers" aria-labelledby="h-btnumbers">
+            <h2 id="h-btnumbers">Your numbers</h2>
+            <div id="btNumbers"></div>
+          </section>
+        </div>
+
+        <div class="battle-main">
+          <section class="panel act o-bt-attack" aria-labelledby="h-btattack" data-nosave>
+            <h2 id="h-btattack">Attack</h2>
+            <div id="btWeapons" class="weapon-picker" role="radiogroup" aria-label="Weapon"></div>
+            <div class="roll-grid">
+              <label class="field"><span id="btD20aLabel">Attack roll (d20)</span><input id="btD20a" type="number" min="1" max="20" inputmode="numeric" /></label>
+              <label class="field" id="btD20bWrap" hidden><span>Second d20</span><input id="btD20b" type="number" min="1" max="20" inputmode="numeric" /></label>
+              <label class="field"><span>Target AC (optional)</span><input id="btAc" type="number" min="0" max="99" inputmode="numeric" /></label>
+              <label class="field"><span id="btDiceLabel">Damage dice rolled</span><input id="btDice" type="number" min="0" inputmode="numeric" /></label>
+              <label class="field" id="btExtraWrap" hidden><span id="btExtraLabel">Extra dice rolled</span><input id="btExtra" type="number" min="0" inputmode="numeric" /></label>
+            </div>
+            <div id="btResult" class="result" aria-live="polite"></div>
+            <div class="result-actions">
+              <button id="btNext" type="button" class="chip-btn primary">Next attack</button>
+              <button id="btClear" type="button" class="chip-btn">Clear rolls</button>
+            </div>
+          </section>
+
+          <details class="panel check fold o-bt-setup" id="btSetup">
+            <summary><h2>Battle setup</h2></summary>
+            <div id="btSetupBody">
+              <div class="setup-bar">
+                <label class="check-inline"><input type="checkbox" id="btGwm" /> Great Weapon Master feat (adds your proficiency bonus to damage with Heavy weapons)</label>
+                <button id="btAddWeapon" type="button" class="chip-btn">Add weapon</button>
+                <button id="btImport" type="button" class="chip-btn">Import from Attacks</button>
+              </div>
+              <div id="btWeaponCards" class="weapon-cards"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+      <datalist id="btTypes">
+        <option value="slashing"></option><option value="piercing"></option><option value="bludgeoning"></option>
+        <option value="fire"></option><option value="cold"></option><option value="lightning"></option>
+        <option value="acid"></option><option value="poison"></option><option value="necrotic"></option>
+        <option value="radiant"></option><option value="psychic"></option><option value="thunder"></option>
+        <option value="force"></option>
+      </datalist>
+    </section>
+
     <footer class="statusbar">
       <span id="status" role="status" aria-live="polite">Ready.</span>
       <span id="saveState" class="save-state"></span>
     </footer>
 
+    <script src="battle.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
