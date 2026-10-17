@@ -89,6 +89,7 @@ Open the **Battle** tab (top right) when a fight starts. Roll your own dice, typ
 It shows the attack total, hit or miss (a natural 20 is a critical hit, a natural 1 always misses), the final damage with a breakdown by type, and the mastery effect to apply (Cleave, Graze, Push, Topple, and so on). Critical hits double the dice and add modifiers once.
 
 - **Rage** and **Reckless Attack** buttons change the numbers (Rage damage, advantage). Roll mode covers advantage and disadvantage; enter both d20s and it uses the right one.
+- **Checks and saves** rolls Strength checks, saves and skills the same way. Rage gives Advantage on Strength checks and saves (not attack rolls; Reckless Attack covers attacks), Danger Sense on Dexterity saves, and Primal Knowledge lets raging Acrobatics, Intimidation, Perception, Stealth, and Survival use Strength. Advantage and Disadvantage from any sources cancel to a normal roll.
 - **Turn** tracks your Action, Bonus action, Reaction, and attacks per action. **Next attack** clears the rolls for the next swing.
 - **Your numbers** shows AC, HP, saves, and Rage effects from the sheet.
 - **Battle setup** holds each weapon's damage dice, type, Heavy, thrown, magic bonus, and mastery. The first time you open the tab it fills this in from your Attacks list; check it once, especially Heavy and mastery.

@@ -73,6 +73,40 @@ function signed(n) {
   return n >= 0 ? `+${n}` : `${n}`;
 }
 
+// Advantage and Disadvantage from any number of sources cancel each other out: one of each gives a normal roll.
+function resolveD20(advantageFrom, disadvantageFrom, rolls) {
+  let state = "normal";
+  if (advantageFrom.length && !disadvantageFrom.length) {
+    state = "adv";
+  } else if (disadvantageFrom.length && !advantageFrom.length) {
+    state = "dis";
+  }
+  const first = toWholeNumber(rolls.d20a, 1, 20);
+  const second = toWholeNumber(rolls.d20b, 1, 20);
+  let natural = null;
+  let needSecond = false;
+  if (state === "normal") {
+    natural = first;
+  } else if (first !== null && second !== null) {
+    natural = state === "adv" ? Math.max(first, second) : Math.min(first, second);
+  } else {
+    needSecond = true;
+  }
+  return { state, first, second, natural, needSecond };
+}
+
+function rollFlagText(result) {
+  const adv = result.advantageFrom;
+  const dis = result.disadvantageFrom;
+  if (!adv.length && !dis.length) {
+    return "";
+  }
+  if (adv.length && dis.length) {
+    return `Advantage (${adv.join(", ")}) and Disadvantage (${dis.join(", ")}) cancel out. Roll one d20 normally.`;
+  }
+  return `${adv.length ? "Advantage" : "Disadvantage"} from ${(adv.length ? adv : dis).join(", ")}. Roll two d20 and enter both.`;
+}
+
 // Pure attack math. weapon: see sanitizeWeapon. rolls: {d20a, d20b, ac, dice, extra}. ctx: {mods, prof, raging,
 // rageDamage, reckless, rollMode, gwm}. Returns everything the UI needs; touches no DOM.
 function computeAttack(weapon, rolls, ctx) {
@@ -95,29 +129,12 @@ function computeAttack(weapon, rolls, ctx) {
     advantageFrom.push("Reckless Attack");
   }
   if (ctx.rollMode === "adv") {
-    advantageFrom.push("Advantage");
+    advantageFrom.push("other effect");
   }
   if (ctx.rollMode === "dis") {
-    disadvantageFrom.push("Disadvantage");
+    disadvantageFrom.push("other effect");
   }
-  let state = "normal";
-  if (advantageFrom.length && !disadvantageFrom.length) {
-    state = "adv";
-  } else if (disadvantageFrom.length && !advantageFrom.length) {
-    state = "dis";
-  }
-
-  const first = toWholeNumber(rolls.d20a, 1, 20);
-  const second = toWholeNumber(rolls.d20b, 1, 20);
-  let natural = null;
-  let needSecond = false;
-  if (state === "normal") {
-    natural = first;
-  } else if (first !== null && second !== null) {
-    natural = state === "adv" ? Math.max(first, second) : Math.min(first, second);
-  } else {
-    needSecond = true;
-  }
+  const { state, first, second, natural, needSecond } = resolveD20(advantageFrom, disadvantageFrom, rolls);
 
   const total = natural === null ? null : natural + attackBonus;
   const crit = natural === 20;
@@ -207,6 +224,46 @@ function computeAttack(weapon, rolls, ctx) {
     heavyBonusApplied: Boolean(ctx.gwm && weapon.heavy),
     gwmFollowUp: Boolean(ctx.gwm && crit && !weapon.ranged)
   };
+}
+
+const PRIMAL_SKILLS = new Set(["acrobatics", "intimidation", "perception", "stealth", "survival"]);
+
+// Pure ability check / saving throw math. spec: {kind: "save"|"check"|"skill", ability, skill, proficient, expert,
+// usePrimal}. ctx: {mods, prof, raging, level, dangerSense, rollMode}. Rage gives Advantage on Strength checks and
+// Strength saves (not attack rolls); Danger Sense on Dexterity saves; anything else cancels per resolveD20.
+function computeCheck(spec, rolls, ctx) {
+  const baseAbility = spec.ability;
+  const primalEligible = spec.kind === "skill" && ctx.raging && ctx.level >= 3 && PRIMAL_SKILLS.has(spec.skill) && baseAbility !== "str";
+  const usedPrimal = primalEligible && Boolean(spec.usePrimal);
+  const abilityKey = usedPrimal ? "str" : baseAbility;
+
+  const parts = [{ label: abilityKey.toUpperCase(), value: ctx.mods[abilityKey] }];
+  const multiplier = spec.kind === "check" ? 0 : spec.expert ? 2 : spec.proficient ? 1 : 0;
+  if (multiplier) {
+    parts.push({ label: multiplier === 2 ? "Expertise" : "Proficiency", value: multiplier * ctx.prof });
+  }
+  const bonus = sumValues(parts);
+
+  const advantageFrom = [];
+  const disadvantageFrom = [];
+  if (ctx.raging && abilityKey === "str") {
+    advantageFrom.push("Rage");
+  }
+  if (spec.kind === "save" && baseAbility === "dex" && ctx.dangerSense) {
+    advantageFrom.push("Danger Sense");
+  }
+  if (ctx.rollMode === "adv") {
+    advantageFrom.push("other effect");
+  }
+  if (ctx.rollMode === "dis") {
+    disadvantageFrom.push("other effect");
+  }
+
+  const roll = resolveD20(advantageFrom, disadvantageFrom, rolls);
+  const total = roll.natural === null ? null : roll.natural + bonus;
+  const dc = toWholeNumber(rolls.dc, 0, 99);
+  const success = total !== null && dc !== null ? total >= dc : null;
+  return { ...roll, abilityKey, parts, bonus, primalEligible, usedPrimal, advantageFrom, disadvantageFrom, total, dc, success };
 }
 
 // ---- Weapon setup helpers (best-effort guesses from the free-text Attacks list) ----
@@ -313,6 +370,10 @@ const Battle = (() => {
     selectedId: "",
     tab: "sheet",
     rollMode: "normal",
+    checkKind: "save:str",
+    checkMode: "normal",
+    primal: true,
+    danger: true,
     reckless: false,
     turn: { action: false, bonus: false, reaction: false, attacks: 0 },
     ready: false
@@ -401,10 +462,15 @@ const Battle = (() => {
     state.selectedId = "";
     state.reckless = false;
     state.rollMode = "normal";
+    state.checkKind = "save:str";
+    state.checkMode = "normal";
+    state.primal = true;
+    state.danger = true;
     state.turn = { action: false, bonus: false, reaction: false, attacks: 0 };
-    ["btD20a", "btD20b", "btAc", "btDice", "btExtra"].forEach((id) => {
+    ["btD20a", "btD20b", "btAc", "btDice", "btExtra", "btCheckD20a", "btCheckD20b", "btCheckDc"].forEach((id) => {
       $(id).value = "";
     });
+    $("btCheckKind").value = state.checkKind;
     renderAll();
   }
 
@@ -472,6 +538,7 @@ const Battle = (() => {
     renderTurn();
     renderNumbers();
     renderResult();
+    renderChecks();
   }
 
   function refresh() {
@@ -482,6 +549,7 @@ const Battle = (() => {
     renderTurn();
     renderNumbers();
     renderResult();
+    renderChecks();
   }
 
   function renderModifiers() {
@@ -628,12 +696,9 @@ const Battle = (() => {
     const attackBlock = el("section", { class: "res-block" });
     attackBlock.append(el("h3", { text: "To hit" }));
     const bonusText = result.attackParts.map((part) => `${signed(part.value)} ${part.label}`).join(" ");
-    if (result.advantageFrom.length || result.disadvantageFrom.length) {
-      const names = [...result.advantageFrom, ...result.disadvantageFrom].join(", ");
-      const cancelled = result.advantageFrom.length && result.disadvantageFrom.length;
-      attackBlock.append(
-        el("p", { class: "res-flag", text: cancelled ? `${names} cancel out. Roll one d20.` : `${result.state === "adv" ? "Advantage" : "Disadvantage"} from ${names}. Roll two d20 and enter both.` })
-      );
+    const flag = rollFlagText(result);
+    if (flag) {
+      attackBlock.append(el("p", { class: "res-flag", text: flag }));
     }
     if (result.needSecond) {
       attackBlock.append(el("p", { class: "muted", text: "Enter both d20 rolls." }));
@@ -741,6 +806,101 @@ const Battle = (() => {
     }
   }
 
+  function checkSpec(kind) {
+    const [type, key] = String(kind).split(":");
+    if (type === "save") {
+      const save = SAVES.find((s) => s.ability === key) || SAVES[0];
+      return { kind: "save", ability: save.ability, label: `${save.label} saving throw`, proficient: $(`${save.key}Prof`).checked };
+    }
+    if (type === "skill") {
+      const skill = SKILLS.find((s) => s.key === key) || SKILLS[0];
+      return {
+        kind: "skill",
+        skill: skill.key,
+        ability: skill.ability,
+        label: `${skill.label} check`,
+        proficient: $(`${skill.key}Prof`).checked,
+        expert: $(`${skill.key}Expert`).checked
+      };
+    }
+    const ability = ABILITIES.find((a) => a.key === key) || ABILITIES[0];
+    return { kind: "check", ability: ability.key, label: `${ability.label} check` };
+  }
+
+  function renderChecks() {
+    const out = $("btCheckResult");
+    out.textContent = "";
+    const spec = checkSpec(state.checkKind);
+    spec.usePrimal = state.primal;
+
+    const mods = {};
+    ABILITIES.forEach((a) => {
+      mods[a.key] = getModifier($(a.key).value);
+    });
+    const dangerPossible = spec.kind === "save" && spec.ability === "dex" && isBarbarian() && level() >= 2;
+    const result = computeCheck(
+      spec,
+      { d20a: $("btCheckD20a").value, d20b: $("btCheckD20b").value, dc: $("btCheckDc").value },
+      {
+        mods,
+        prof: profByLevel(level()),
+        raging: $("isRaging").checked,
+        level: level(),
+        dangerSense: dangerPossible && state.danger,
+        rollMode: state.checkMode
+      }
+    );
+
+    $("btCheckKind").value = state.checkKind;
+    $("btPrimalWrap").hidden = !result.primalEligible;
+    $("btPrimal").checked = state.primal;
+    $("btDangerWrap").hidden = !dangerPossible;
+    $("btDanger").checked = state.danger;
+    $("btCheckD20bWrap").hidden = result.state === "normal";
+    $("btCheckD20aLabel").textContent = result.state === "normal" ? "d20 roll" : `First d20 (${result.state === "adv" ? "Advantage" : "Disadvantage"})`;
+    document.querySelectorAll("#btCheckMode input").forEach((radio) => {
+      radio.checked = radio.value === state.checkMode;
+    });
+
+    const block = el("section", { class: "res-block" }, el("h3", { text: spec.label }));
+    const flag = rollFlagText(result);
+    if (flag) {
+      block.append(el("p", { class: "res-flag", text: flag }));
+    }
+    const bonusText = result.parts.map((part) => `${signed(part.value)} ${part.label}`).join(" ");
+    if (result.usedPrimal) {
+      block.append(el("p", { class: "muted", text: "Primal Knowledge: made as a Strength check." }));
+    }
+    if (result.needSecond) {
+      block.append(el("p", { class: "muted", text: "Enter both d20 rolls." }));
+    } else if (result.natural === null) {
+      block.append(el("p", { class: "muted", text: `Enter your d20 roll. Your bonus is ${signed(result.bonus)} (${bonusText}).` }));
+    } else {
+      const used = result.state === "normal" ? `${result.natural}` : `${result.natural} (of ${result.first} and ${result.second})`;
+      block.append(el("p", { class: "res-big" }, el("span", { class: "big", text: String(result.total) }), el("span", { class: "res-sub", text: `${used} ${bonusText}` })));
+      if (result.success !== null) {
+        block.append(el("p", { class: `badge ${result.success ? "badge-hit" : "badge-miss"}`, text: result.success ? `Success against DC ${result.dc}` : `Fail against DC ${result.dc}` }));
+      } else {
+        block.append(el("p", { class: "badge badge-info", text: `Succeeds against any DC up to ${result.total}` }));
+      }
+    }
+    out.append(block);
+  }
+
+  function buildCheckOptions() {
+    const select = $("btCheckKind");
+    select.textContent = "";
+    const group = (label, items) => {
+      const g = el("optgroup", { label });
+      items.forEach(([value, text]) => g.append(el("option", { value, text })));
+      select.append(g);
+    };
+    group("Saving throws", SAVES.map((s) => [`save:${s.ability}`, `${s.label} save`]));
+    group("Ability checks", ABILITIES.map((a) => [`check:${a.key}`, `${a.label} check`]));
+    group("Skills", SKILLS.map((s) => [`skill:${s.key}`, `${s.label} (${s.ability.toUpperCase()})`]));
+    select.value = state.checkKind;
+  }
+
   function renderSetup() {
     const box = $("btWeaponCards");
     box.textContent = "";
@@ -824,9 +984,31 @@ const Battle = (() => {
       renderModifiers();
       renderResult();
     });
-    $("btRollMode").addEventListener("change", (event) => {
+    // "input" (not "change"): the sheet-wide input handler re-renders after this and must see the new mode.
+    $("btRollMode").addEventListener("input", (event) => {
       state.rollMode = event.target.value;
+      renderModifiers();
       renderResult();
+    });
+
+    $("btCheckKind").addEventListener("input", (event) => {
+      state.checkKind = event.target.value;
+      renderChecks();
+    });
+    $("btCheckMode").addEventListener("input", (event) => {
+      state.checkMode = event.target.value;
+      renderChecks();
+    });
+    ["btCheckD20a", "btCheckD20b", "btCheckDc"].forEach((id) => {
+      $(id).addEventListener("input", renderChecks);
+    });
+    $("btPrimal").addEventListener("input", (event) => {
+      state.primal = event.target.checked;
+      renderChecks();
+    });
+    $("btDanger").addEventListener("input", (event) => {
+      state.danger = event.target.checked;
+      renderChecks();
     });
 
     $("btWeapons").addEventListener("click", (event) => {
@@ -965,6 +1147,7 @@ const Battle = (() => {
     if (state.ready) {
       return;
     }
+    buildCheckOptions();
     bind();
     state.ready = true;
   }
@@ -978,5 +1161,5 @@ const Battle = (() => {
 })();
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { computeAttack, guessWeapon, sanitizeWeapon, parseDice, MASTERY };
+  module.exports = { computeAttack, computeCheck, rollFlagText, guessWeapon, sanitizeWeapon, parseDice, MASTERY };
 }

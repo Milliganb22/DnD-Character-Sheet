@@ -321,6 +321,27 @@
             </div>
           </section>
 
+          <section class="panel act o-bt-check" aria-labelledby="h-btcheck" data-nosave>
+            <h2 id="h-btcheck">Checks and saves</h2>
+            <div class="roll-grid">
+              <label class="field wide"><span>What are you rolling?</span><select id="btCheckKind"></select></label>
+              <label class="field"><span id="btCheckD20aLabel">d20 roll</span><input id="btCheckD20a" type="number" min="1" max="20" inputmode="numeric" /></label>
+              <label class="field" id="btCheckD20bWrap" hidden><span>Second d20</span><input id="btCheckD20b" type="number" min="1" max="20" inputmode="numeric" /></label>
+              <label class="field"><span>DC (optional)</span><input id="btCheckDc" type="number" min="0" max="99" inputmode="numeric" /></label>
+            </div>
+            <fieldset id="btCheckMode" class="seg">
+              <legend>Other effects on this roll (cover, prone, spells)</legend>
+              <label><input type="radio" name="btCheckMode" value="normal" checked /><span>None</span></label>
+              <label><input type="radio" name="btCheckMode" value="adv" /><span>Advantage</span></label>
+              <label><input type="radio" name="btCheckMode" value="dis" /><span>Disadvantage</span></label>
+            </fieldset>
+            <div class="check-options">
+              <label class="check-inline" id="btPrimalWrap" hidden><input type="checkbox" id="btPrimal" checked /> Use Strength instead (Primal Knowledge, while raging)</label>
+              <label class="check-inline" id="btDangerWrap" hidden><input type="checkbox" id="btDanger" checked /> Danger Sense applies (I can see the effect and I am not incapacitated)</label>
+            </div>
+            <div id="btCheckResult" class="result" aria-live="polite"></div>
+          </section>
+
           <details class="panel check fold o-bt-setup" id="btSetup">
             <summary><h2>Battle setup</h2></summary>
             <div id="btSetupBody">

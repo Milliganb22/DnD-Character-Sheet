@@ -1676,6 +1676,7 @@ select:focus-visible {
   .battle-cols {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 0.6rem;
   }
 
@@ -1692,16 +1693,20 @@ select:focus-visible {
     order: 2;
   }
 
-  .o-bt-turn {
+  .o-bt-check {
     order: 3;
   }
 
-  .o-bt-numbers {
+  .o-bt-turn {
     order: 4;
   }
 
-  .o-bt-setup {
+  .o-bt-numbers {
     order: 5;
+  }
+
+  .o-bt-setup {
+    order: 6;
   }
 
   .tab {
@@ -1718,4 +1723,18 @@ select:focus-visible {
   .big {
     font-size: 2.8rem;
   }
+}
+
+.field.wide {
+  grid-column: 1 / -1;
+}
+
+.check-options {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.check-options .check-inline {
+  align-items: flex-start;
 }
