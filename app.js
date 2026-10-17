@@ -1031,6 +1031,7 @@ function init() {
   buildAttacksTable();
   Battle.init();
   Notes.init();
+  Maps.init();
   bindEvents();
   loadFromLocal();
   renderAllCards();

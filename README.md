@@ -10,22 +10,26 @@ This project is a static web app (HTML/CSS/JavaScript):
 - `app.js`
 - `battle.js`
 - `notes.js`
+- `maps.js`
 - `store.js`
 - `tabs.js`
+- `zip.js`
 
 Anyone can use it by opening `index.html` in a browser.
 
 ## Quick Start (For Your Friends)
 
 1. Download the project files.
-2. Keep these 7 files in the same folder:
+2. Keep these 9 files in the same folder:
    - `index.html`
    - `styles.css`
    - `app.js`
    - `battle.js`
    - `notes.js`
+   - `maps.js`
    - `store.js`
    - `tabs.js`
+   - `zip.js`
 3. Open `index.html` in a browser (Chrome, Edge, Safari, Firefox).
 
 No install, no server, no account needed.
@@ -76,7 +80,7 @@ Import when:
 - Initiative calculated from DEX plus an editable bonus
 - CP/SP/EP/GP/PP currency fields
 - Features & Traits and Weapon Mastery shown as cards (a blank line separates cards; use `Edit text` to change them)
-- Battle tab and Notes tab (see below)
+- Battle, Notes, and Maps tabs (see below)
 - Phone-friendly layout; long reference sections fold away
 - Dynamic attack rows (`+` button); empty slots stay hidden until you add one
 - Autosaves to your browser as you edit
@@ -113,6 +117,16 @@ The **Notes** tab keeps your campaign notes, sorted by session number, with fast
 - **Export** gives you a backup file (JSON) or plain text. The plain-text export can be imported again.
 - Notes are stored in your browser's database (IndexedDB), which has room for years of notes. They stay on this device and browser, so export a backup now and then; the Notes tab reminds you if it has been a while.
 
+## Maps Tab
+
+The **Maps** tab keeps the map images and handouts you import, in a gallery you can search.
+
+- **Import images** with the button, by dragging image files onto the tab, or by pasting an image from your clipboard. PNG, JPG, WebP, GIF, AVIF, BMP and SVG work, and you can pick many at once. A .zip of images imports too.
+- **Open a map** to see it full screen. Scroll or pinch to zoom, drag to move around, double-tap to zoom in or out, and use Fit and Actual size. Prev and Next (or the arrow keys) flip through your maps.
+- **Details** lets you rename a map, give it a group (like "Waterdeep" or "Dungeons"), and add a note. The gallery can be searched by name, group, or note, filtered by group, and sorted.
+- **Backup** downloads every map and its details as one .zip. To restore (or move to another browser), choose that .zip with Import images. Maps you already have are skipped.
+- Maps are stored in your browser's database on this device, so download a backup now and then; the tab reminds you if it has been a while.
+
 ## Sharing This on GitHub
 
 This folder contains personal reference files (PDFs/.pages) and a character save file (`May7th.json`). The `.gitignore` in this repo excludes those by default, so they stay local and are never pushed.
@@ -138,14 +152,16 @@ Because this is a static app, hosting is straightforward.
 
 ### My friend opened the HTML file and it looks broken
 
-Make sure all 7 files are in the same folder:
+Make sure all 9 files are in the same folder:
 - `index.html`
 - `styles.css`
 - `app.js`
 - `battle.js`
 - `notes.js`
+- `maps.js`
 - `store.js`
 - `tabs.js`
+- `zip.js`
 
 ### My saved character disappeared
 

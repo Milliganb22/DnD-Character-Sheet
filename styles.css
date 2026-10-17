@@ -1710,14 +1710,16 @@ select:focus-visible {
   }
 
   .tab {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 2.6rem;
-    padding: 0.3rem 1.4rem;
+    padding: 0.3rem 0.2rem;
+    text-align: center;
   }
 
   .tabs {
     flex: 1;
-    max-width: 22rem;
+    max-width: 26rem;
   }
 
   .big {
@@ -1768,7 +1770,9 @@ select:focus-visible {
 
 /* ---- Notes ---- */
 body[data-tab="notes"] .vitals,
-body[data-tab="notes"] .death-strip {
+body[data-tab="notes"] .death-strip,
+body[data-tab="maps"] .vitals,
+body[data-tab="maps"] .death-strip {
   display: none;
 }
 
@@ -2178,4 +2182,297 @@ dialog p {
   .note-group {
     top: 0;
   }
+}
+
+/* ---- Maps ---- */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+.maps {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 2.5rem;
+}
+
+.maps.drag-over {
+  outline: 3px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.maps-toolbar {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.maps-toolbar p {
+  margin: 0;
+}
+
+.maps-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.8rem;
+}
+
+.maps-controls .field {
+  min-width: 9rem;
+}
+
+.maps-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.menu-note {
+  margin: 0;
+  padding: 0.3rem 0.7rem 0.4rem;
+  max-width: 14rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.maps-empty {
+  padding: 2.5rem 0.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.maps-empty h2 {
+  margin-bottom: 0.4rem;
+  color: var(--text);
+}
+
+.maps-empty .chip-btn {
+  margin-top: 0.8rem;
+}
+
+.map-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-card {
+  display: grid;
+  gap: 0.25rem;
+  align-content: start;
+  width: 100%;
+  padding: 0.4rem;
+  text-align: left;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.map-card:hover {
+  border-color: var(--muted);
+}
+
+.map-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.map-thumb-wrap {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #241d18;
+  border-radius: 3px;
+}
+
+.map-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.map-name {
+  padding: 0 0.2rem;
+  font: 700 1.05rem/1.2 var(--display);
+  overflow-wrap: anywhere;
+}
+
+.map-meta {
+  padding: 0 0.2rem 0.2rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+dialog.viewer {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #0e0b09;
+  border: 0;
+  border-radius: 0;
+}
+
+dialog.viewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+dialog.viewer > * + * {
+  margin-top: 0;
+}
+
+.viewer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.7rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.viewer-title {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow: hidden;
+  font: 600 1.25rem/1.2 var(--prose);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer-nav {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.viewer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.viewer-stage:active {
+  cursor: grabbing;
+}
+
+.viewer-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.viewer-stage img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.viewer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.viewer-zoom {
+  min-width: 4rem;
+  text-align: center;
+  font: 700 1.1rem var(--display);
+}
+
+.viewer-details {
+  position: absolute;
+  top: 3.6rem;
+  right: 0;
+  bottom: 3.6rem;
+  z-index: 3;
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  width: min(22rem, 100%);
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  box-shadow: -10px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.viewer-details[hidden] {
+  display: none;
+}
+
+.viewer-details p {
+  margin: 0;
+}
+
+@media (max-width: 759px) {
+  .maps {
+    padding: 0.6rem 0.7rem 2rem;
+  }
+
+  .map-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .maps-actions {
+    margin-left: 0;
+  }
+
+  .maps-controls .field {
+    min-width: 7rem;
+    flex: 1;
+  }
+
+  .viewer-details {
+    top: auto;
+    bottom: 3.6rem;
+    width: 100%;
+    max-height: 62%;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.viewer-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--muted);
+  font: 400 1.1rem/1.5 var(--prose);
+  pointer-events: none;
+}
+
+.viewer-loading[hidden] {
+  display: none;
 }

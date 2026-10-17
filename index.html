@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <title>DnD Character Sheet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -44,6 +44,7 @@
           <button type="button" role="tab" class="tab" id="tabSheet" data-tab="sheet" aria-controls="sheetTab" aria-selected="true">Sheet</button>
           <button type="button" role="tab" class="tab" id="tabBattle" data-tab="battle" aria-controls="battleTab" aria-selected="false" tabindex="-1">Battle</button>
           <button type="button" role="tab" class="tab" id="tabNotes" data-tab="notes" aria-controls="notesTab" aria-selected="false" tabindex="-1">Notes</button>
+          <button type="button" role="tab" class="tab" id="tabMaps" data-tab="maps" aria-controls="mapsTab" aria-selected="false" tabindex="-1">Maps</button>
         </nav>
         <details class="file-menu">
           <summary>File</summary>
@@ -441,6 +442,83 @@
       </dialog>
     </section>
 
+
+    <section class="maps" id="mapsTab" role="tabpanel" aria-labelledby="tabMaps" data-isolated hidden>
+      <p id="mapsStorageWarning" class="warning" hidden>
+        Maps cannot be saved in this browser mode (a private window, or storage is blocked). Images you add now will be lost when you close the page.
+      </p>
+      <div id="mapsBackup" class="backup-notice" hidden>
+        <span id="mapsBackupText"></span>
+        <button id="mapsBackupNow" type="button" class="chip-btn">Download a backup</button>
+      </div>
+      <div class="maps-toolbar">
+        <div class="search-box" role="search">
+          <input id="mapsSearch" type="search" placeholder="Search maps by name, group, or note" aria-label="Search maps" autocomplete="off" />
+          <button id="mapsSearchClear" type="button" class="chip-btn" aria-label="Clear search" hidden>Clear</button>
+        </div>
+        <div class="maps-controls">
+          <label class="field"><span>Group</span><select id="mapsGroup"></select></label>
+          <label class="field"><span>Sort</span>
+            <select id="mapsSort">
+              <option value="recent">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="name">Name A to Z</option>
+            </select>
+          </label>
+          <div class="maps-actions">
+            <button id="mapsImportBtn" type="button" class="chip-btn primary">Import images</button>
+            <input id="mapsFiles" type="file" accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.avif,.bmp,.svg,.zip,application/zip" multiple hidden />
+            <details class="more-menu">
+              <summary>Backup</summary>
+              <div class="more-menu-list">
+                <button id="mapsExportZip" type="button" class="menu-btn">Download all (.zip)</button>
+                <p class="menu-note">To restore, choose that .zip with Import images.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        <p id="mapsSummary" class="muted" aria-live="polite"></p>
+        <p id="mapsStatus" class="muted notes-status" aria-live="polite"></p>
+        <p id="mapsUsage" class="muted"></p>
+      </div>
+      <div id="mapsGrid" class="maps-grid"></div>
+      <datalist id="mapGroups"></datalist>
+
+      <dialog id="mapViewer" class="viewer" aria-labelledby="viewerTitle">
+        <header class="viewer-bar">
+          <button id="viewerClose" type="button" class="chip-btn" aria-label="Close map viewer">Close</button>
+          <h2 id="viewerTitle" class="viewer-title"></h2>
+          <span id="viewerCount" class="muted"></span>
+          <div class="viewer-nav">
+            <button id="viewerPrev" type="button" class="chip-btn" aria-label="Previous map">Prev</button>
+            <button id="viewerNext" type="button" class="chip-btn" aria-label="Next map">Next</button>
+            <button id="viewerDetailsBtn" type="button" class="chip-btn" aria-expanded="false" aria-controls="viewerDetails">Details</button>
+          </div>
+        </header>
+        <div id="viewerStage" class="viewer-stage" tabindex="0" role="img" aria-label="Map. Drag to move. Scroll or pinch to zoom. Double-tap to zoom in or out.">
+          <img id="viewerImg" alt="" draggable="false" />
+          <p id="viewerLoading" class="viewer-loading" role="status" hidden></p>
+        </div>
+        <div class="viewer-tools">
+          <button id="viewerZoomOut" type="button" class="chip-btn" aria-label="Zoom out">-</button>
+          <span id="viewerZoom" class="viewer-zoom" aria-live="polite">100%</span>
+          <button id="viewerZoomIn" type="button" class="chip-btn" aria-label="Zoom in">+</button>
+          <button id="viewerFit" type="button" class="chip-btn">Fit</button>
+          <button id="viewerActual" type="button" class="chip-btn">Actual size</button>
+        </div>
+        <aside id="viewerDetails" class="viewer-details" aria-label="Map details" hidden>
+          <label class="field"><span>Name</span><input id="mapName" type="text" maxlength="120" /></label>
+          <label class="field"><span>Group</span><input id="mapGroup" type="text" maxlength="60" list="mapGroups" placeholder="e.g. Waterdeep, Dungeons" /></label>
+          <label class="field"><span>Note</span><textarea id="mapNote" rows="3" maxlength="2000"></textarea></label>
+          <p id="mapInfo" class="muted"></p>
+          <div class="note-actions">
+            <button id="mapDownload" type="button" class="chip-btn">Download</button>
+            <button id="mapDelete" type="button" class="chip-btn danger">Delete</button>
+          </div>
+        </aside>
+      </dialog>
+    </section>
+
     <footer class="statusbar">
       <span id="status" role="status" aria-live="polite">Ready.</span>
       <span id="saveState" class="save-state"></span>
@@ -448,8 +526,10 @@
 
     <script src="tabs.js"></script>
     <script src="store.js"></script>
+    <script src="zip.js"></script>
     <script src="battle.js"></script>
     <script src="notes.js"></script>
+    <script src="maps.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

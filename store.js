@@ -1,11 +1,11 @@
 "use strict";
 
-// Small IndexedDB wrapper for data that is too big for localStorage: notes, maps, and the rules library.
-// All object stores are created up front so later features do not need a database upgrade.
+// Small IndexedDB wrapper for data that is too big for localStorage: notes, maps (small records plus the full
+// image files kept in a separate store), and the rules library.
 const Store = (() => {
   const DB_NAME = "dnd-sheet-data";
-  const VERSION = 1;
-  const STORES = ["notes", "maps", "library"];
+  const VERSION = 2;
+  const STORES = ["notes", "maps", "mapfiles", "library"];
   let dbPromise = null;
   let failed = false;
 
