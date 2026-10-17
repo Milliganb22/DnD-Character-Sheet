@@ -1738,3 +1738,30 @@ select:focus-visible {
 .check-options .check-inline {
   align-items: flex-start;
 }
+
+.undo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.undo-row .chip-btn,
+.vital-rage .chip-btn {
+  min-height: 2.2rem;
+  color: var(--muted);
+}
+
+.undo-row .chip-btn:hover,
+.vital-rage .chip-btn:hover {
+  color: var(--text);
+}
+
+.two-handed {
+  margin: -0.2rem 0 0.7rem;
+}
+
+.toggle-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

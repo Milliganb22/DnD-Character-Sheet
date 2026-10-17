@@ -9,6 +9,7 @@ const PRIMAL_KNOWLEDGE_SKILLS = new Set([
 ]);
 
 let saveTimer = null;
+let rageUseSpent = false;
 
 const ABILITIES = [
   { key: "str", label: "Strength" },
@@ -328,6 +329,7 @@ function getData() {
 
   data.attacks = collectAttackRows();
   data.battle = Battle.collect();
+  data.rageUseSpent = rageUseSpent;
   return data;
 }
 
@@ -363,6 +365,7 @@ function setData(data) {
   if ("isRaging" in data) {
     document.getElementById("isRaging").checked = Boolean(data.isRaging);
   }
+  rageUseSpent = Boolean(data.rageUseSpent) && Boolean(data.isRaging);
 
   DEATH_SAVE_IDS.forEach((id) => {
     document.getElementById(id).checked = Boolean(data[id]);
@@ -524,6 +527,27 @@ function updateHeaderAndVitals() {
   document.getElementById("deathStrip").hidden = current > 0;
 }
 
+// Undo an accidental Rage: turn it off and give the spent use back. If the use was not spent this session
+// (Rage was already on when the sheet loaded), it just ends the Rage.
+function undoRage() {
+  const raging = document.getElementById("isRaging");
+  if (!raging.checked) {
+    return;
+  }
+  raging.checked = false;
+  const leftEl = document.getElementById("rageUsesLeft");
+  const max = rageUsesByLevel(document.getElementById("level").value);
+  if (rageUseSpent) {
+    leftEl.value = String(Math.min(max, (Number(leftEl.value) || 0) + 1));
+    setStatus(`Rage undone. Your use is back (${leftEl.value} of ${max} left).`, "status-ok");
+  } else {
+    setStatus("Rage ended.", "status-ok");
+  }
+  rageUseSpent = false;
+  updateDerived();
+  scheduleSave();
+}
+
 function applyHpAdjustment() {
   const amountInput = document.getElementById("hpAdjustAmount");
   const mode = document.querySelector('input[name="hpAdjustMode"]:checked')?.value || "damage";
@@ -678,6 +702,7 @@ function updateDerived({ skipClamp = false } = {}) {
   }
 
   updateHeaderAndVitals();
+  document.getElementById("undoRageBtn").hidden = !(isRaging && rageUseSpent);
   Battle.refresh();
 }
 
@@ -809,6 +834,7 @@ function resetForm() {
 
   buildAttacksTable();
   Battle.reset();
+  rageUseSpent = false;
   clearTimeout(saveTimer);
   saveTimer = null;
   setSaveState("");
@@ -844,14 +870,22 @@ function bindEvents() {
       const left = Number(leftEl.value) || 0;
       if (left > 0) {
         leftEl.value = String(left - 1);
+        rageUseSpent = true;
         setStatus(`Rage started. ${left - 1} left.`, "status-ok");
       } else {
+        rageUseSpent = false;
         setStatus("No rages left in the counter. Edit it if that's wrong.", "status-error");
       }
       updateDerived();
       scheduleSave();
     }
+    if (event.target.id === "isRaging" && !event.target.checked) {
+      rageUseSpent = false;
+      updateDerived();
+    }
   });
+
+  document.getElementById("undoRageBtn").addEventListener("click", undoRage);
 
   document.getElementById("clearDeathSavesBtn").addEventListener("click", () => {
     clearDeathSaves();
@@ -861,6 +895,7 @@ function bindEvents() {
   document.getElementById("rageShortRestBtn").addEventListener("click", () => {
     const leftEl = document.getElementById("rageUsesLeft");
     leftEl.value = String((Number(leftEl.value) || 0) + 1);
+    rageUseSpent = false;
     updateDerived();
     scheduleSave();
     setStatus("Short rest: regained one rage.", "status-ok");
@@ -869,6 +904,7 @@ function bindEvents() {
   document.getElementById("rageLongRestBtn").addEventListener("click", () => {
     const level = document.getElementById("level").value;
     document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(level));
+    rageUseSpent = false;
     updateDerived();
     scheduleSave();
     setStatus("Long rest: all rages regained.", "status-ok");

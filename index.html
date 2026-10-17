@@ -92,6 +92,7 @@
           <input id="rageUsesLeft" type="number" min="0" inputmode="numeric" aria-label="Rages left" />
           <span class="rage-max">of <span id="rageUsesMax">2</span> left</span>
         </div>
+        <button id="undoRageBtn" type="button" class="chip-btn" title="Undo an accidental Rage and get the use back" hidden>Undo</button>
       </div>
 
       <details class="hp-tools">
@@ -279,7 +280,11 @@
                 <span class="toggle-sub">Advantage on Strength melee</span>
               </button>
             </div>
-            <p id="btRecklessWarning" class="warning" hidden>Reckless: attacks against you have Advantage until your next turn.</p>
+            <div class="undo-row">
+              <button id="btUndoRage" type="button" class="chip-btn" title="Turn Rage off and get the use back" hidden>Undo Rage</button>
+              <button id="btUndoReckless" type="button" class="chip-btn" hidden>Undo Reckless</button>
+            </div>
+            <p id="btRecklessWarning" class="warning" hidden>Reckless: attacks against you have Advantage until the start of your next turn.</p>
             <fieldset id="btRollMode" class="seg">
               <legend>Attack roll</legend>
               <label><input type="radio" name="btRollMode" value="normal" checked /><span>Normal</span></label>
@@ -307,6 +312,7 @@
           <section class="panel act o-bt-attack" aria-labelledby="h-btattack" data-nosave>
             <h2 id="h-btattack">Attack</h2>
             <div id="btWeapons" class="weapon-picker" role="radiogroup" aria-label="Weapon"></div>
+            <label class="check-inline two-handed" id="btTwoHandedWrap" hidden><input type="checkbox" id="btTwoHanded" /> <span id="btTwoHandedText">Two-handed</span></label>
             <div class="roll-grid">
               <label class="field"><span id="btD20aLabel">Attack roll (d20)</span><input id="btD20a" type="number" min="1" max="20" inputmode="numeric" /></label>
               <label class="field" id="btD20bWrap" hidden><span>Second d20</span><input id="btD20b" type="number" min="1" max="20" inputmode="numeric" /></label>
@@ -337,7 +343,7 @@
             </fieldset>
             <div class="check-options">
               <label class="check-inline" id="btPrimalWrap" hidden><input type="checkbox" id="btPrimal" checked /> Use Strength instead (Primal Knowledge, while raging)</label>
-              <label class="check-inline" id="btDangerWrap" hidden><input type="checkbox" id="btDanger" checked /> Danger Sense applies (I can see the effect and I am not incapacitated)</label>
+              <label class="check-inline" id="btDangerWrap" hidden><input type="checkbox" id="btDanger" checked /> Danger Sense applies (I am not Incapacitated)</label>
             </div>
             <div id="btCheckResult" class="result" aria-live="polite"></div>
           </section>

@@ -88,7 +88,9 @@ Open the **Battle** tab (top right) when a fight starts. Roll your own dice, typ
 
 It shows the attack total, hit or miss (a natural 20 is a critical hit, a natural 1 always misses), the final damage with a breakdown by type, and the mastery effect to apply (Cleave, Graze, Push, Topple, and so on). Critical hits double the dice and add modifiers once.
 
-- **Rage** and **Reckless Attack** buttons change the numbers (Rage damage, advantage). Roll mode covers advantage and disadvantage; enter both d20s and it uses the right one.
+- **Rage** and **Reckless Attack** buttons change the numbers (Rage damage, advantage). Reckless Attack follows the 2024 rule: declare it on your first attack of the turn, it gives Advantage on Strength attack rolls until the start of your next turn, and it can be used every turn (no rest needed). **New turn** ends it. **Undo Rage** (also in the top bar) turns an accidental Rage off and gives the use back; **Undo Reckless** cancels Reckless Attack.
+- Roll mode covers advantage and disadvantage; enter both d20s and it uses the right one.
+- Weapons with the Versatile property (like the Quarterstaff) get a **Two-handed** toggle that switches to the larger die.
 - **Checks and saves** rolls Strength checks, saves and skills the same way. Rage gives Advantage on Strength checks and saves (not attack rolls; Reckless Attack covers attacks), Danger Sense on Dexterity saves, and Primal Knowledge lets raging Acrobatics, Intimidation, Perception, Stealth, and Survival use Strength. Advantage and Disadvantage from any sources cancel to a normal roll.
 - **Turn** tracks your Action, Bonus action, Reaction, and attacks per action. **Next attack** clears the rolls for the next swing.
 - **Your numbers** shows AC, HP, saves, and Rage effects from the sheet.

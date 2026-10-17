@@ -125,7 +125,7 @@ function computeAttack(weapon, rolls, ctx) {
 
   const advantageFrom = [];
   const disadvantageFrom = [];
-  if (ctx.reckless && abilityKey === "str" && !weapon.ranged) {
+  if (ctx.reckless && abilityKey === "str") {
     advantageFrom.push("Reckless Attack");
   }
   if (ctx.rollMode === "adv") {
@@ -157,7 +157,8 @@ function computeAttack(weapon, rolls, ctx) {
   }
 
   const multiplier = crit ? 2 : 1;
-  const mainInstruction = diceText(weapon.dice, multiplier);
+  const useVersatile = Boolean(ctx.twoHanded && weapon.versatile);
+  const mainInstruction = diceText(useVersatile ? weapon.versatile : weapon.dice, multiplier);
   const extraInstruction = weapon.extraDice ? diceText(weapon.extraDice, multiplier) : "";
   const mainRolled = toWholeNumber(rolls.dice, 0, 999);
   const extraRolled = toWholeNumber(rolls.extra, 0, 999);
@@ -215,6 +216,7 @@ function computeAttack(weapon, rolls, ctx) {
     flat,
     flatTotal: sumValues(flat),
     mainInstruction,
+    twoHanded: useVersatile,
     extraInstruction,
     needsExtra,
     parts,
@@ -281,6 +283,11 @@ const DEFAULT_MASTERY_BY_NAME = [
   [/javelin/i, "slow"],
   [/handaxe/i, "vex"]
 ];
+const VERSATILE_BY_NAME = [
+  [/quarter ?staff/i, "1d8"],
+  [/long ?sword|battle ?axe|war ?hammer/i, "1d10"],
+  [/spear|trident/i, "1d8"]
+];
 const HEAVY_NAMES = /great ?axe|great ?sword|maul|pike|halberd|glaive|lance|heavy crossbow|colossus|collosus/i;
 const THROWN_NAMES = /javelin|dart|net/i;
 
@@ -329,6 +336,7 @@ function guessWeapon(attack, masteryText) {
     name,
     dice: dice[0] || "",
     type,
+    versatile: (VERSATILE_BY_NAME.find(([pattern]) => pattern.test(name)) || [])[1] || "",
     extraDice: dice[1] || "",
     extraType: dice[1] ? types[1] || "" : "",
     ability: "str",
@@ -349,6 +357,7 @@ function sanitizeWeapon(raw) {
     name: text(w.name, 60),
     dice: dice(w.dice),
     type: text(w.type, 30).toLowerCase(),
+    versatile: dice(w.versatile),
     extraDice: dice(w.extraDice),
     extraType: text(w.extraType, 30).toLowerCase(),
     ability: w.ability === "dex" ? "dex" : "str",
@@ -370,6 +379,7 @@ const Battle = (() => {
     selectedId: "",
     tab: "sheet",
     rollMode: "normal",
+    twoHanded: false,
     checkKind: "save:str",
     checkMode: "normal",
     primal: true,
@@ -420,6 +430,7 @@ const Battle = (() => {
       rageDamage: rageDamageByLevel(lvl),
       reckless: state.reckless && isBarbarian() && lvl >= 2,
       rollMode: state.rollMode,
+      twoHanded: state.twoHanded,
       gwm: state.gwm
     };
   }
@@ -462,6 +473,7 @@ const Battle = (() => {
     state.selectedId = "";
     state.reckless = false;
     state.rollMode = "normal";
+    state.twoHanded = false;
     state.checkKind = "save:str";
     state.checkMode = "normal";
     state.primal = true;
@@ -560,8 +572,20 @@ const Battle = (() => {
     rageButton.querySelector(".toggle-sub").textContent = `${$("rageUsesLeft").value || 0} of ${$("rageUsesMax").textContent} left`;
 
     const showReckless = isBarbarian() && level() >= 2;
-    $("btReckless").hidden = !showReckless;
-    $("btReckless").setAttribute("aria-pressed", String(state.reckless));
+    const attacksDone = state.turn.attacks > 0;
+    const reckless = $("btReckless");
+    reckless.hidden = !showReckless;
+    reckless.setAttribute("aria-pressed", String(state.reckless));
+    // Reckless Attack must be declared on the first attack roll of your turn; it lasts until your next turn starts.
+    const locked = !state.reckless && attacksDone;
+    reckless.disabled = locked;
+    reckless.querySelector(".toggle-sub").textContent = state.reckless
+      ? "Until the start of your next turn"
+      : locked
+        ? "Only on your first attack each turn"
+        : "Advantage on Strength attacks";
+    $("btUndoReckless").hidden = !(showReckless && state.reckless);
+    $("btUndoRage").hidden = !(raging && typeof rageUseSpent !== "undefined" && rageUseSpent);
 
     document.querySelectorAll("#btRollMode input").forEach((radio) => {
       radio.checked = radio.value === state.rollMode;
@@ -659,7 +683,7 @@ const Battle = (() => {
       lines.push("Not raging. Start a Rage with the button above (bonus action).");
     }
     if (barbarian && lvl >= 2) {
-      lines.push("Danger Sense: Advantage on Dexterity saves against effects you can see (not while incapacitated)");
+      lines.push("Danger Sense: Advantage on Dexterity saves unless you are Incapacitated");
     }
     if (lines.length) {
       const list = el("ul", { class: "num-notes" });
@@ -686,6 +710,9 @@ const Battle = (() => {
     };
     const result = computeAttack(weapon, rolls, readContext());
 
+    $("btTwoHandedWrap").hidden = !weapon.versatile;
+    $("btTwoHandedText").textContent = `Two-handed (${weapon.versatile || ""})`;
+    $("btTwoHanded").checked = state.twoHanded;
     $("btD20bWrap").hidden = result.state === "normal";
     $("btExtraWrap").hidden = !result.needsExtra;
     $("btExtraLabel").textContent = result.needsExtra ? `Extra dice rolled (${result.extraInstruction} ${weapon.extraType || ""})`.trim() : "Extra dice rolled";
@@ -734,7 +761,7 @@ const Battle = (() => {
       if (result.mastery && result.mastery.key === "graze") {
         damageBlock.append(el("p", { class: "res-flag", text: `Graze: deal ${result.mastery.grazeDamage} ${weapon.type || ""} damage anyway.`.replace("  ", " ") }));
       }
-    } else if (!weapon.dice) {
+    } else if (!result.mainInstruction) {
       damageBlock.append(el("p", { class: "muted", text: "Set this weapon's damage dice under Battle setup." }));
     } else if (result.damageTotal === null) {
       const instruction = [result.mainInstruction, result.extraInstruction ? `${result.extraInstruction} ${weapon.extraType || ""}`.trim() : ""].filter(Boolean).join(" + ");
@@ -938,6 +965,7 @@ const Battle = (() => {
         field(weapon, "name", "Name"),
         field(weapon, "dice", "Damage dice", { attrs: { placeholder: "1d12" } }),
         field(weapon, "type", "Damage type", { attrs: { placeholder: "slashing", list: "btTypes" } }),
+        field(weapon, "versatile", "Two-handed dice (Versatile)", { attrs: { placeholder: "1d8" } }),
         field(weapon, "extraDice", "Extra dice (optional)", { attrs: { placeholder: "1d6" } }),
         field(weapon, "extraType", "Extra type", { attrs: { placeholder: "fire", list: "btTypes" } }),
         el("label", { class: "field" }, "Attack ability", abilitySelect),
@@ -949,7 +977,7 @@ const Battle = (() => {
         "div",
         { class: "weapon-card-foot" },
         el("label", { class: "check-inline" }, heavy, "Heavy"),
-        el("label", { class: "check-inline" }, ranged, "Thrown or ranged"),
+        el("label", { class: "check-inline" }, ranged, "Ranged attack (no Hew bonus attack)"),
         el("button", { type: "button", class: "chip-btn danger", "data-remove": weapon.id }, "Remove")
       )
     );
@@ -982,6 +1010,21 @@ const Battle = (() => {
     $("btReckless").addEventListener("click", () => {
       state.reckless = !state.reckless;
       renderModifiers();
+      renderResult();
+    });
+    $("btUndoReckless").addEventListener("click", () => {
+      state.reckless = false;
+      renderModifiers();
+      renderResult();
+      setStatus("Reckless Attack cancelled.", "status-ok");
+    });
+    $("btUndoRage").addEventListener("click", () => {
+      undoRage();
+      renderModifiers();
+      renderResult();
+    });
+    $("btTwoHanded").addEventListener("input", (event) => {
+      state.twoHanded = event.target.checked;
       renderResult();
     });
     // "input" (not "change"): the sheet-wide input handler re-renders after this and must see the new mode.
@@ -1033,6 +1076,7 @@ const Battle = (() => {
         $(id).value = "";
       });
       renderTurn();
+      renderModifiers();
       renderResult();
       $("btD20a").focus();
       setStatus(state.turn.attacks >= limit ? "That was your last attack this action." : "Next attack ready.", "status-ok");
