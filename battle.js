@@ -395,7 +395,7 @@ const Battle = (() => {
     primal: true,
     danger: true,
     reckless: false,
-    turn: { action: false, bonus: false, reaction: false, attacks: 0 },
+    turn: { action: false, bonus: false, reaction: false, haste: false, attacks: 0 },
     ready: false
   };
 
@@ -494,7 +494,7 @@ const Battle = (() => {
     state.checkMode = "normal";
     state.primal = true;
     state.danger = true;
-    state.turn = { action: false, bonus: false, reaction: false, attacks: 0 };
+    state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0 };
     ["btD20a", "btD20b", "btAc", "btDice", "btExtra", "btCheckD20a", "btCheckD20b", "btCheckDc"].forEach((id) => {
       $(id).value = "";
     });
@@ -618,13 +618,24 @@ const Battle = (() => {
     });
   }
 
+  // Extra Attack gives two attacks with the Attack action. Haste adds one more attack, from its own action.
+  function attackLimits() {
+    const fromAction = isBarbarian() && level() >= 5 ? 2 : 1;
+    const hasted = typeof Items !== "undefined" && Items.effects().extraAttacks > 0;
+    return { fromAction, hasted, total: fromAction + (hasted ? 1 : 0) };
+  }
+
   function renderTurn() {
-    const attackLimit = isBarbarian() && level() >= 5 ? 2 : 1;
+    const limits = attackLimits();
+    const attackLimit = limits.total;
     const chips = [
       ["action", "Action"],
       ["bonus", "Bonus action"],
       ["reaction", "Reaction"]
     ];
+    if (limits.hasted) {
+      chips.splice(1, 0, ["haste", "Haste action"]);
+    }
     const box = $("btTurnChips");
     box.textContent = "";
     chips.forEach(([key, label]) => {
@@ -633,6 +644,11 @@ const Battle = (() => {
       );
     });
     $("btAttackCount").textContent = `${state.turn.attacks} of ${attackLimit}`;
+    $("btAttackNote").textContent = limits.hasted
+      ? `(${limits.fromAction} from the Attack action, 1 from the Haste action, which allows one weapon attack only)`
+      : limits.fromAction > 1
+        ? "(Extra Attack)"
+        : "";
   }
 
   function renderNumbers() {
@@ -1059,7 +1075,7 @@ const Battle = (() => {
     });
 
     $("btNext").addEventListener("click", () => {
-      const limit = isBarbarian() && level() >= 5 ? 2 : 1;
+      const limit = attackLimits().total;
       state.turn.attacks = Math.min(limit, state.turn.attacks + 1);
       state.turn.action = true;
       ["btD20a", "btD20b", "btDice", "btExtra"].forEach((id) => {
@@ -1087,7 +1103,7 @@ const Battle = (() => {
       }
     });
     $("btNewTurn").addEventListener("click", () => {
-      state.turn = { action: false, bonus: false, reaction: false, attacks: 0 };
+      state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0 };
       state.reckless = false;
       renderModifiers();
       renderTurn();

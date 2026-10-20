@@ -133,6 +133,13 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 - **Backup** downloads every map and its details as one .zip. To restore (or move to another browser), choose that .zip with Import images. Maps you already have are skipped.
 - Maps are stored in your browser's database on this device, so download a backup now and then; the tab reminds you if it has been a while.
 
+## Top Bar and Levelling Up
+
+- **Damage / Heal:** type an amount in the top bar and press **Damage** or **Heal** (Enter applies damage). Temp HP and "Back to full HP" are under **Temp HP**. Damage uses up Temp HP first.
+- **Short rest / Long rest** are in the top bar as well as the Magic items panel. A short rest gives back one rage; a long rest gives back all rages and item charges and ends Haste.
+- **Levelling up:** when you type enough Experience to reach the next level, the level goes up on its own (it never goes down). The proficiency bonus, rage uses, rage damage and hit dice update, and a **Level up** banner lists the new class features from the built-in rules, plus a box to add your hit point gain to your maximum and current HP. Roll the die or use the average. You still add new features to Features and Traits yourself, and choose ability score improvements. The banner stays until you dismiss it.
+- **Battle turn tracker:** Extra Attack gives 2 attacks per Attack action. With Haste on, a **Haste action** appears and the turn counter allows a third attack (the Haste action allows one weapon attack only). A natural 20 doubles the damage dice, not the flat bonuses.
+
 ## Magic Items
 
 The **Magic items** panel (Sheet tab, and a short version on the Battle tab) tracks your special objects. Choose **Add my objects** to add the Colossus Greatsword, Festus's Forge, Boots of Haste, Riverstone of Subtle Persuasion and Alchemy Jug from your object sheet. **Add item** makes your own.
@@ -144,7 +151,7 @@ The **Magic items** panel (Sheet tab, and a short version on the Battle tab) tra
 - **Festus's Forge:** fire resistance while attuned, and in Battle the hammer uses 1d10 + 1d4 fire one-handed or 1d12 + 1d6 fire two-handed.
 - **Riverstone:** +1 to Deception and Persuasion while carried.
 - Battle weapons named like these items (Colossus or Collosus, Forge hammer or Festus) take their dice and bonuses from the item.
-- Every item has a description you can open and edit, plus a button to restore it to the object sheet text.
+- Every item has a description you can open and edit, plus a button to restore it to the object sheet text. The panel and each item fold open and closed with the arrow.
 
 ## Rules Tab
 

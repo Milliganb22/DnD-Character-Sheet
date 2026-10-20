@@ -167,6 +167,7 @@ const Items = (() => {
       attuned: Boolean(i.requiresAttunement) && Boolean(i.attuned),
       worn: Boolean(i.worn),
       active: Boolean(i.active),
+      collapsed: Boolean(i.collapsed),
       days: whole(i.days, 0, 999, 0),
       uses: (Array.isArray(i.uses) ? i.uses : []).slice(0, 8).map(sanitizeUse)
     };
@@ -200,10 +201,11 @@ const Items = (() => {
 
   // What the items are doing to the character right now. ctx: { str } (the Strength score).
   function computeEffects(items, ctx = {}) {
-    const out = { acBonus: 0, speedMultiplier: 1, speedPenalty: 0, resist: [], saveAdvantage: { dex: [] }, skillBonus: {}, chips: [] };
+    const out = { extraAttacks: 0, acBonus: 0, speedMultiplier: 1, speedPenalty: 0, resist: [], saveAdvantage: { dex: [] }, skillBonus: {}, chips: [] };
     items.forEach((item) => {
       if (item.preset === "haste-boots" && item.worn && attunementOk(item) && item.active) {
         out.acBonus += 2;
+        out.extraAttacks += 1;
         out.speedMultiplier *= 2;
         out.saveAdvantage.dex.push("Haste");
         out.chips.push({ source: item.name, text: "Haste is on: +2 AC, Speed doubled, Advantage on Dexterity saves, and one extra action each turn (one weapon attack, Dash, Disengage, Hide or Utilize)." });
@@ -434,15 +436,24 @@ const Items = (() => {
     const preset = item.preset ? PRESETS[item.preset] : null;
     const wornLabel = (preset && preset.wornLabel) || "Carrying";
     const atLimit = attunedCount(state.items) >= MAX_ATTUNED && !item.attuned;
-    const card = el("article", { class: `item-card${item.worn ? " is-worn" : ""}${compact ? " is-compact" : ""}`, "data-id": item.id });
-    card.append(
-      el(
-        "header",
-        { class: "item-head" },
-        el("h3", { text: item.name }),
-        compact ? null : el("span", { class: "muted item-kind", text: item.kind })
-      )
-    );
+    const className = `item-card${item.worn ? " is-worn" : ""}${compact ? " is-compact" : ""}`;
+    const card = compact ? el("article", { class: className, "data-id": item.id }) : el("details", { class: className, "data-id": item.id, open: !item.collapsed });
+    const status = [item.worn ? wornLabel : "", item.attuned ? "Attuned" : "", item.active ? "Haste on" : "", item.preset === "colossus" ? `Stage ${stageFor(item.days)}` : ""].filter(Boolean).join(" · ");
+    const head = [el("h3", { text: item.name }), compact ? null : el("span", { class: "muted item-kind", text: item.kind }), compact ? null : el("span", { class: "item-status", text: status })];
+    if (compact) {
+      card.append(el("header", { class: "item-head" }, head));
+    } else {
+      card.append(el("summary", { class: "item-head" }, head));
+      card.addEventListener("toggle", () => {
+        const collapsed = !card.open;
+        if (item.collapsed !== collapsed) {
+          item.collapsed = collapsed;
+          if (typeof scheduleSave === "function") {
+            scheduleSave();
+          }
+        }
+      });
+    }
     const toggles = el("div", { class: "item-toggles" });
     toggles.append(
       el("label", { class: "check-inline" }, el("input", { type: "checkbox", checked: item.worn, "data-act": "worn", "data-id": item.id }), ` ${wornLabel}`)

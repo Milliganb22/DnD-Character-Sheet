@@ -256,7 +256,7 @@ summary {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.3rem 1.6rem;
+  gap: 0.3rem 1.2rem;
   padding: 0.4rem 1rem 0.5rem;
   background: var(--panel);
   border-top: 1px solid var(--line);
@@ -1017,7 +1017,8 @@ body:has(#isRaging:checked) .ability-card:first-child .ability-head > span:first
     grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-areas:
       "hp hp ac init"
-      "spd rage rage tools";
+      "spd adj adj tools"
+      "rage rage rest rest";
     gap: 0.2rem 0.5rem;
     padding: 0.3rem 0.7rem 0.4rem;
   }
@@ -1046,6 +1047,16 @@ body:has(#isRaging:checked) .ability-card:first-child .ability-head > span:first
 
   .hp-tools {
     grid-area: tools;
+  }
+
+  .vital-adjust {
+    grid-area: adj;
+  }
+
+  .vital-rest {
+    grid-area: rest;
+    flex-direction: row;
+    justify-content: flex-end;
   }
 
   .vital-label {
@@ -2766,4 +2777,161 @@ dialog.viewer > * + * {
 .item-stage-line {
   margin: 0;
   font-size: 0.88rem;
+}
+
+/* ---- Damage and heal in the top bar, rest buttons, level-up banner ---- */
+.vital-adjust {
+  align-self: flex-end;
+}
+
+.adjust-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+.vitals .adjust-row input {
+  width: 4rem;
+  font-size: 1.5rem;
+}
+
+.adjust-row .chip-btn {
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+}
+
+.adjust-damage {
+  color: #ff8a5c;
+  border-color: #ff8a5c;
+}
+
+.adjust-heal {
+  color: #9bd68a;
+  border-color: #9bd68a;
+}
+
+.vital-rest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-self: center;
+}
+
+.vital-rest .chip-btn {
+  min-height: 1.9rem;
+  padding: 0 0.8rem;
+}
+
+.field-note {
+  font-size: 0.8rem;
+}
+
+body[data-tab="notes"] .levelup,
+body[data-tab="maps"] .levelup,
+body[data-tab="rules"] .levelup {
+  display: none;
+}
+
+.levelup {
+  max-width: 1560px;
+  margin: 0.7rem auto 0;
+  padding: 0.8rem 1.1rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-left: 6px solid var(--accent);
+  border-radius: 4px;
+}
+
+.levelup[hidden] {
+  display: none;
+}
+
+.levelup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.levelup h2,
+.levelup h3 {
+  margin: 0;
+}
+
+.levelup h3 {
+  margin-top: 0.7rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.levelup p {
+  margin: 0.3rem 0;
+}
+
+.levelup-list {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.levelup-hp,
+.levelup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.levelup-hp .field {
+  width: 9rem;
+}
+
+/* Collapsible item cards */
+.item-card > summary {
+  cursor: pointer;
+}
+
+.item-status {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+@media (max-width: 759px) {
+  .vitals .adjust-row input {
+    width: 2.7rem;
+    font-size: 1.3rem;
+  }
+
+  .adjust-row {
+    gap: 0.25rem;
+  }
+
+  .adjust-row .chip-btn {
+    min-height: 2.5rem;
+    padding: 0 0.45rem;
+    font-size: 0.9rem;
+  }
+
+  .vital-adjust .vital-label {
+    text-align: left;
+  }
+
+  .vital-rest {
+    flex-direction: row;
+    gap: 0.25rem;
+  }
+
+  .vital-rest .chip-btn {
+    flex: 1 1 0;
+    min-height: 2.5rem;
+    padding: 0 0.3rem;
+    font-size: 0.85rem;
+  }
+
+  .hp-tools summary {
+    padding: 0 0.3rem;
+    font-size: 0.85rem;
+  }
 }

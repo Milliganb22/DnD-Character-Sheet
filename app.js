@@ -330,6 +330,7 @@ function getData() {
   data.attacks = collectAttackRows();
   data.battle = Battle.collect();
   data.items = Items.collect();
+  data.levelUp = levelUpState ? { ...levelUpState } : null;
   data.rageUseSpent = rageUseSpent;
   return data;
 }
@@ -396,6 +397,8 @@ function setData(data) {
   const attackRows = Array.isArray(data.attacks) ? data.attacks : parseLegacyAttacks(data);
   buildAttacksTable(attackRows);
   Items.apply(data.items);
+  levelUpState = sanitizeLevelUp(data.levelUp);
+  renderLevelUp();
   Battle.apply(data.battle);
 
   renderAllCards();
@@ -550,9 +553,8 @@ function undoRage() {
   scheduleSave();
 }
 
-function applyHpAdjustment() {
+function applyHpAdjustment(mode = "damage") {
   const amountInput = document.getElementById("hpAdjustAmount");
-  const mode = document.querySelector('input[name="hpAdjustMode"]:checked')?.value || "damage";
   const maxHpEl = document.getElementById("maxHp");
   const currentHpEl = document.getElementById("currentHp");
   const tempHpEl = document.getElementById("tempHp");
@@ -706,6 +708,7 @@ function updateDerived({ skipClamp = false } = {}) {
   }
 
   updateItemVitals(fx);
+  updateXpReadout();
   updateHeaderAndVitals();
   document.getElementById("undoRageBtn").hidden = !(isRaging && rageUseSpent);
   Battle.refresh();
@@ -724,6 +727,203 @@ function updateItemVitals(fx) {
   };
   show("acEffective", acNow !== ac, `${acNow} with items`);
   show("speedEffective", speedNow !== speed, `${speedNow} ft with items`);
+}
+
+// ---- Levelling up from experience points ----
+
+// Total XP needed to reach each level (index = level). Same table as the Character Advancement table.
+const XP_FOR_LEVEL = [0, 0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+let levelUpState = null;
+
+function levelForXp(xp) {
+  let level = 1;
+  for (let l = 2; l <= 20; l += 1) {
+    if (xp >= XP_FOR_LEVEL[l]) {
+      level = l;
+    }
+  }
+  return level;
+}
+
+function sanitizeLevelUp(raw) {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const from = Math.floor(Number(raw.from));
+  const to = Math.floor(Number(raw.to));
+  if (!(from >= 1 && to > from && to <= 20)) {
+    return null;
+  }
+  return { from, to, hpAdded: Math.max(0, Math.floor(Number(raw.hpAdded) || 0)), hpDone: Boolean(raw.hpDone) };
+}
+
+function updateXpReadout() {
+  const level = Number(document.getElementById("level").value) || 1;
+  const note = document.getElementById("xpNext");
+  note.textContent = level >= 20 ? "Max level" : `Level ${level + 1} at ${XP_FOR_LEVEL[level + 1].toLocaleString("en-US")} XP`;
+}
+
+// Called when the XP box is changed. Raises the level when the XP is enough, never lowers it.
+function checkLevelUp() {
+  const xp = Math.max(0, Number(document.getElementById("xp").value) || 0);
+  const levelEl = document.getElementById("level");
+  const current = Number(levelEl.value) || 1;
+  const target = levelForXp(xp);
+  if (target <= current) {
+    return;
+  }
+  levelEl.value = String(target);
+  // Keep one banner going across several level-ups, unless the hit points for the earlier ones are already done.
+  const carry = levelUpState && !levelUpState.hpDone ? levelUpState : null;
+  levelUpState = { from: carry ? carry.from : current, to: target, hpAdded: 0, hpDone: false };
+  const hitDice = document.getElementById("hitDice");
+  const match = /^\s*(\d+)d(\d+)\s*$/i.exec(hitDice.value);
+  if (match) {
+    hitDice.value = `${target}d${match[2]}`;
+  }
+  updateDerived();
+  scheduleSave();
+  renderLevelUp();
+  setStatus(`Level up! You are now level ${target}.`, "status-ok");
+}
+
+function mk(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  Object.entries(props).forEach(([key, value]) => {
+    if (key === "class") {
+      node.className = value;
+    } else if (key === "text") {
+      node.textContent = value;
+    } else if (value !== false && value !== null && value !== undefined) {
+      node.setAttribute(key, value === true ? "" : value);
+    }
+  });
+  children.flat(Infinity).forEach((child) => {
+    if (child !== null && child !== undefined && child !== false) {
+      node.append(child);
+    }
+  });
+  return node;
+}
+
+function buildLevelUpBanner(info) {
+  const box = document.getElementById("levelUpBanner");
+  box.textContent = "";
+  const state = levelUpState;
+  if (!state) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  const { from, to } = state;
+  const count = to - from;
+  const className = document.getElementById("class").value.trim();
+  const barbarian = /barbarian/i.test(className);
+  const done = [`proficiency bonus +${profByLevel(to)}`, "hit dice"];
+  if (barbarian) {
+    done.push(`${rageUsesByLevel(to)} rages per long rest`, `Rage damage +${rageDamageByLevel(to)}`);
+  }
+
+  box.append(
+    mk("div", { class: "levelup-head" }, mk("h2", { text: count > 1 ? `Level up! Level ${from} to ${to}` : `Level up! You are now level ${to}` }), mk("button", { type: "button", class: "chip-btn", "data-lu": "dismiss", text: "Dismiss" })),
+    mk("p", { class: "muted", text: `Already updated for you: ${done.join(", ")}.` })
+  );
+
+  const todo = mk("ul", { class: "levelup-list" });
+  for (let l = from + 1; l <= to; l += 1) {
+    const row = info && info.levels[l];
+    if (row) {
+      todo.append(mk("li", {}, mk("strong", { text: `Level ${l}: ` }), row.features.join(", ") || "no new class features", row.extras ? mk("span", { class: "muted", text: ` (${row.extras})` }) : null));
+    } else {
+      todo.append(mk("li", {}, mk("strong", { text: `Level ${l}: ` }), "look up your class features table."));
+    }
+  }
+  box.append(mk("h3", { text: "What is new" }), todo);
+
+  const hitDie = info && info.hitDie ? info.hitDie : null;
+  const conMod = getModifier(document.getElementById("con").value);
+  if (hitDie) {
+    const average = Math.floor(hitDie / 2) + 1 + conMod;
+    const total = Math.max(count, average * count);
+    box.append(mk("h3", { text: "Hit points" }));
+    if (state.hpDone) {
+      box.append(mk("p", { class: "muted", text: `Added ${state.hpAdded} HP. Your maximum is now ${document.getElementById("maxHp").value}.` }));
+    } else {
+      box.append(
+        mk("p", { class: "muted", text: `Roll 1d${hitDie} + ${conMod >= 0 ? "" : "-"}${Math.abs(conMod)} (Constitution) for each new level, or take the average of ${average}.${count > 1 ? ` That is ${total} for ${count} levels.` : ""}` }),
+        mk(
+          "div",
+          { class: "levelup-hp" },
+          mk("label", { class: "field" }, mk("span", { text: count > 1 ? `HP gained (all ${count} levels)` : "HP gained" }), mk("input", { type: "number", min: "0", id: "levelUpHp", inputmode: "numeric" })),
+          mk("button", { type: "button", class: "chip-btn", "data-lu": "average", "data-value": String(total), text: `Use the average (${total})` }),
+          mk("button", { type: "button", class: "chip-btn primary", "data-lu": "addhp", text: "Add to my HP" })
+        )
+      );
+    }
+  }
+
+  const reminders = [];
+  if (info && Object.keys(info.levels).some((l) => l > from && l <= to && info.levels[l].features.some((f) => /ability score improvement/i.test(f)))) {
+    reminders.push("Choose an Ability Score Improvement (or a feat). Change your scores in the Abilities box, and the sheet updates the rest.");
+  }
+  if (info && Object.keys(info.levels).some((l) => l > from && l <= to && info.levels[l].features.some((f) => /subclass/i.test(f)))) {
+    reminders.push("You gain a subclass feature. Add it to Features and Traits (put the text in Rules, My library if you want to search it).");
+  }
+  reminders.push("Add the new features above to Features and Traits.");
+  box.append(mk("h3", { text: "Still up to you" }), mk("ul", { class: "levelup-list" }, reminders.map((text) => mk("li", { text }))));
+  box.append(mk("div", { class: "levelup-actions" }, mk("button", { type: "button", class: "chip-btn", "data-lu": "rules", text: className ? `Open ${className} in Rules` : "Open Rules" })));
+}
+
+async function renderLevelUp() {
+  const token = levelUpState;
+  buildLevelUpBanner(null);
+  if (!token) {
+    return;
+  }
+  let info = null;
+  try {
+    info = await Rules.classLevels(document.getElementById("class").value);
+  } catch {
+    info = null;
+  }
+  if (token === levelUpState && info) {
+    buildLevelUpBanner(info);
+  }
+}
+
+function bindLevelUp() {
+  document.getElementById("levelUpBanner").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-lu]");
+    if (!button || !levelUpState) {
+      return;
+    }
+    const action = button.dataset.lu;
+    if (action === "dismiss") {
+      levelUpState = null;
+      renderLevelUp();
+      scheduleSave();
+    } else if (action === "average") {
+      document.getElementById("levelUpHp").value = button.dataset.value;
+    } else if (action === "addhp") {
+      const gained = Math.max(0, Math.floor(Number(document.getElementById("levelUpHp").value) || 0));
+      if (!gained) {
+        setStatus("Type how many hit points you gained first.", "status-error");
+        return;
+      }
+      const maxEl = document.getElementById("maxHp");
+      const curEl = document.getElementById("currentHp");
+      maxEl.value = String((Number(maxEl.value) || 0) + gained);
+      curEl.value = String((Number(curEl.value) || 0) + gained);
+      levelUpState = { ...levelUpState, hpAdded: gained, hpDone: true };
+      updateDerived();
+      scheduleSave();
+      buildLevelUpBanner(null);
+      renderLevelUp();
+      setStatus(`Added ${gained} HP to your maximum and current hit points.`, "status-ok");
+    } else if (action === "rules") {
+      Rules.open(document.getElementById("class").value.trim());
+    }
+  });
 }
 
 function setStatus(message, type = "") {
@@ -851,11 +1051,12 @@ function resetForm() {
     document.getElementById(id).innerHTML = "";
   });
 
-  document.querySelector('input[name="hpAdjustMode"][value="damage"]').checked = true;
 
   buildAttacksTable();
   Battle.reset();
   Items.reset();
+  levelUpState = null;
+  renderLevelUp();
   rageUseSpent = false;
   clearTimeout(saveTimer);
   saveTimer = null;
@@ -883,6 +1084,9 @@ function bindEvents() {
   });
 
   document.body.addEventListener("change", (event) => {
+    if (event.target.id === "xp") {
+      checkLevelUp();
+    }
     if (event.target.id === "maxHp" || event.target.id === "level") {
       updateDerived();
       scheduleSave();
@@ -986,14 +1190,19 @@ function bindEvents() {
     });
   });
 
-  document.getElementById("applyHpAdjustBtn").addEventListener("click", applyHpAdjustment);
+  document.getElementById("hpDamageBtn").addEventListener("click", () => applyHpAdjustment("damage"));
+  document.getElementById("hpHealBtn").addEventListener("click", () => applyHpAdjustment("heal"));
+  document.getElementById("hpFullBtn").addEventListener("click", () => applyHpAdjustment("full"));
 
   document.getElementById("hpAdjustAmount").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      applyHpAdjustment();
+      applyHpAdjustment(event.shiftKey ? "heal" : "damage");
     }
   });
+
+  document.getElementById("topShortRest").addEventListener("click", () => document.getElementById("rageShortRestBtn").click());
+  document.getElementById("topLongRest").addEventListener("click", () => document.getElementById("rageLongRestBtn").click());
 
   document.getElementById("addAttackBtn").addEventListener("click", () => {
     addAttackRow();
@@ -1053,6 +1262,7 @@ function init() {
   buildChecklist("savingThrows", SAVES, false);
   buildChecklist("skills", SKILLS, true);
   buildAttacksTable();
+  bindLevelUp();
   Items.init();
   Battle.init();
   Notes.init();

@@ -343,6 +343,23 @@ const Rules = (() => {
       .join("\n\n\n");
   }
 
+  // Reads the class entry's "Features by level" lines into { hitDie, levels: { 7: { features, extras } } }.
+  function parseClassLevels(entry) {
+    const levels = {};
+    String(entry.t).split("\n").forEach((line) => {
+      const match = /^\*\*Level (\d+)\*\* \(proficiency [^)]*\): (.*)$/.exec(line);
+      if (match) {
+        const [featureText, extras] = match[2].split(" \u2014 ");
+        levels[Number(match[1])] = {
+          features: /^no new features$/i.test(featureText.trim()) ? [] : featureText.split(", ").map((f) => f.trim()).filter(Boolean),
+          extras: (extras || "").trim()
+        };
+      }
+    });
+    const die = /\*\*Hit Point Die:\*\* d(\d+)/.exec(String(entry.t));
+    return { hitDie: die ? Number(die[1]) : null, levels };
+  }
+
   function libraryEntry(record) {
     return { k: "mine", n: record.title, s: "My library", t: record.body, id: record.id };
   }
@@ -536,6 +553,32 @@ const Rules = (() => {
     });
   }
 
+  let dataPromise = null;
+  function ensureData() {
+    if (window.SRD_DATA) {
+      return Promise.resolve();
+    }
+    if (!dataPromise) {
+      dataPromise = loadScript("rules-data.js").catch((error) => {
+        dataPromise = null;
+        throw error;
+      });
+    }
+    return dataPromise;
+  }
+
+  // For the level-up banner: what a class gains at each level, from the built-in rules.
+  async function classLevels(className) {
+    const name = normalize(className || "");
+    if (!name) {
+      return null;
+    }
+    await ensureData();
+    const classes = window.SRD_DATA.entries.filter((e) => e.k === "class");
+    const entry = classes.find((e) => normalize(e.n) === name) || classes.find((e) => name.includes(normalize(e.n)));
+    return entry ? parseClassLevels(entry) : null;
+  }
+
   async function loadRules() {
     if (state.loaded || state.loading) {
       return;
@@ -544,9 +587,7 @@ const Rules = (() => {
     state.loadError = "";
     render();
     try {
-      if (!window.SRD_DATA) {
-        await loadScript("rules-data.js");
-      }
+      await ensureData();
       state.index = indexEntries(window.SRD_DATA.entries);
       state.loaded = true;
     } catch (error) {
@@ -1045,6 +1086,19 @@ const Rules = (() => {
     });
   }
 
+  // Opens the Rules tab with a search already typed in (used by the level-up banner).
+  function open(query) {
+    state.focusAfterShow = false;
+    state.kind = "all";
+    $("rulesKind").value = "all";
+    $("rulesSearch").value = query;
+    state.query = query;
+    state.limit = PAGE;
+    state.selected = null;
+    state.editing = null;
+    Tabs.show("rules");
+  }
+
   function init() {
     bind();
     Tabs.register("rules", {
@@ -1062,7 +1116,7 @@ const Rules = (() => {
     });
   }
 
-  return { init, normalize, parseQuery, indexEntries, searchRules, makeSnippet, webLinks, parseLibraryText, buildLibraryText, editDistance, stem };
+  return { init, open, classLevels, parseClassLevels, normalize, parseQuery, indexEntries, searchRules, makeSnippet, webLinks, parseLibraryText, buildLibraryText, editDistance, stem };
 })();
 
 if (typeof module !== "undefined" && module.exports) {

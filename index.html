@@ -30,7 +30,7 @@
               <label class="field">Background<input id="background" type="text" /></label>
               <label class="field">Alignment<input id="alignment" type="text" /></label>
               <label class="field">Level<input id="level" type="number" min="1" max="20" value="1" /></label>
-              <label class="field">Experience<input id="xp" type="number" min="0" value="0" /></label>
+              <label class="field">Experience<input id="xp" type="number" min="0" value="0" /><span class="field-note muted" id="xpNext"></span></label>
               <label class="field">Proficiency bonus<input id="profBonus" type="number" value="2" readonly /></label>
               <label class="field">Initiative bonus<input id="initiativeBonus" type="number" value="0" /></label>
               <label class="field">Hit dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
@@ -88,6 +88,23 @@
         <span class="vital-effective" id="speedEffective" hidden></span>
       </label>
 
+      <div class="vital vital-adjust" role="group" aria-label="Damage and healing">
+        <span class="vital-label">Damage / heal</span>
+        <div class="adjust-row">
+          <input id="hpAdjustAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="0" aria-label="Amount of damage or healing" />
+          <button id="hpDamageBtn" type="button" class="chip-btn adjust-damage">Damage</button>
+          <button id="hpHealBtn" type="button" class="chip-btn adjust-heal">Heal</button>
+        </div>
+      </div>
+
+      <details class="hp-tools">
+        <summary>Temp HP</summary>
+        <div class="hp-tools-body">
+          <label class="field">Temp HP<input id="tempHp" type="number" min="0" value="0" inputmode="numeric" /></label>
+          <button id="hpFullBtn" type="button" class="chip-btn">Back to full HP</button>
+        </div>
+      </details>
+
       <div class="vital vital-rage">
         <label class="rage-switch">
           <input id="isRaging" type="checkbox" />
@@ -100,19 +117,11 @@
         <button id="undoRageBtn" type="button" class="chip-btn" title="Undo an accidental Rage and get the use back" hidden>Undo</button>
       </div>
 
-      <details class="hp-tools">
-        <summary>Damage / heal</summary>
-        <div class="hp-tools-body">
-          <label class="field">Amount<input id="hpAdjustAmount" type="number" min="0" step="1" inputmode="numeric" placeholder="15" /></label>
-          <div class="mode-group" role="radiogroup" aria-label="HP change mode">
-            <label class="mode"><input type="radio" name="hpAdjustMode" value="damage" checked /><span>Damage</span></label>
-            <label class="mode"><input type="radio" name="hpAdjustMode" value="heal" /><span>Heal</span></label>
-            <label class="mode"><input type="radio" name="hpAdjustMode" value="full" /><span>Full HP</span></label>
-          </div>
-          <button id="applyHpAdjustBtn" type="button" class="chip-btn primary">Apply</button>
-          <label class="field">Temp HP<input id="tempHp" type="number" min="0" value="0" inputmode="numeric" /></label>
-        </div>
-      </details>
+      <div class="vital vital-rest" role="group" aria-label="Rests">
+        <button id="topShortRest" type="button" class="chip-btn" title="Short rest: regain one rage and reset short-rest item counters">Short rest</button>
+        <button id="topLongRest" type="button" class="chip-btn" title="Long rest: regain all rages and item charges, and end Haste">Long rest</button>
+      </div>
+
       <input id="damageTaken" type="number" readonly hidden />
     </section>
 
@@ -132,6 +141,8 @@
       </span>
       <button id="clearDeathSavesBtn" type="button" class="chip-btn">Clear</button>
     </section>
+
+    <section class="levelup" id="levelUpBanner" aria-live="polite" hidden></section>
 
     <main class="sheet" id="sheetTab" role="tabpanel" aria-labelledby="tabSheet">
       <section class="panel abilities-panel o-abilities" aria-label="Abilities">
@@ -178,12 +189,10 @@
           </section>
 
 
-          <section class="panel check o-items" aria-labelledby="h-items" data-isolated>
-            <div class="panel-head">
-              <h2 id="h-items">Magic items</h2>
-              <span id="itemsAttuned" class="muted"></span>
-            </div>
+          <details class="panel check fold o-items" id="itemsPanel" open data-isolated>
+            <summary><h2>Magic items</h2></summary>
             <div class="items-bar">
+              <span id="itemsAttuned" class="muted"></span>
               <button id="itemsAddMine" type="button" class="chip-btn primary">Add my objects</button>
               <button id="itemsAddCustom" type="button" class="chip-btn">Add item</button>
               <button id="itemsShortRest" type="button" class="chip-btn" title="Short rest: regain one rage and reset short-rest counters">Short rest</button>
@@ -192,7 +201,7 @@
             <p id="itemsNotice" class="muted" aria-live="polite"></p>
             <div id="itemsChips" class="item-chips" hidden></div>
             <div id="itemsList" class="items-list"></div>
-          </section>
+          </details>
 
         <details class="panel check fold o-prof" open>
           <summary><h2>Proficiencies and languages</h2></summary>
@@ -320,14 +329,14 @@
               <button id="btNewTurn" type="button" class="chip-btn">New turn</button>
             </div>
             <div id="btTurnChips" class="turn-chips"></div>
-            <p class="muted">Attacks this action: <strong id="btAttackCount">0 of 1</strong></p>
+            <p class="muted">Attacks this turn: <strong id="btAttackCount">0 of 1</strong> <span id="btAttackNote"></span></p>
           </section>
 
-          <section class="panel act o-bt-items" id="btItemsPanel" aria-labelledby="h-btitems" data-isolated hidden>
-            <h2 id="h-btitems">Magic items</h2>
+          <details class="panel check fold o-bt-items" id="btItemsPanel" open data-isolated hidden>
+            <summary><h2 id="h-btitems">Magic items</h2></summary>
             <div id="btItemChips" class="item-chips" hidden></div>
             <div id="btItems" class="items-list is-compact"></div>
-          </section>
+          </details>
 
           <section class="panel check o-bt-numbers" aria-labelledby="h-btnumbers">
             <h2 id="h-btnumbers">Your numbers</h2>
