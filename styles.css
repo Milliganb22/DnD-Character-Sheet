@@ -2822,6 +2822,19 @@ dialog.viewer > * + * {
   padding: 0 0.8rem;
 }
 
+/* Temp HP sits on the same line as the Damage and Heal buttons */
+@media (min-width: 760px) {
+  .vitals .hp-tools {
+    align-self: flex-end;
+  }
+
+  .vitals .hp-tools summary {
+    min-height: 2.4rem;
+    padding: 0 0.8rem;
+    font-size: 1rem;
+  }
+}
+
 .field-note {
   font-size: 0.8rem;
 }
@@ -2933,5 +2946,50 @@ body[data-tab="rules"] .levelup {
   .hp-tools summary {
     padding: 0 0.3rem;
     font-size: 0.85rem;
+  }
+}
+
+/* Phone: Damage, Heal and Full HP get the wide cell; Temp HP and the rests share the last row */
+@media (max-width: 759px) {
+  .vitals {
+    grid-template-areas:
+      "hp hp ac init"
+      "spd adj adj adj"
+      "rage rage tools rest";
+  }
+
+  .vitals .adjust-row {
+    gap: 0.25rem;
+  }
+
+  .vitals .adjust-row input {
+    width: 2.6rem;
+  }
+
+  .vitals .adjust-row .chip-btn {
+    padding: 0 0.4rem;
+    font-size: 0.88rem;
+  }
+
+  .vitals .hp-tools {
+    align-self: center;
+  }
+
+  .vitals .hp-tools summary {
+    justify-content: center;
+    min-height: 2.5rem;
+  }
+
+  .vitals .vital-rest {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.2rem;
+  }
+
+  .vitals .vital-rest .chip-btn {
+    flex: 0 0 auto;
+    min-height: 1.9rem;
+    padding: 0 0.2rem;
+    font-size: 0.8rem;
   }
 }
