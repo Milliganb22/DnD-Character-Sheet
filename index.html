@@ -34,6 +34,7 @@
               <label class="field">Proficiency bonus<input id="profBonus" type="number" value="2" readonly /></label>
               <label class="field">Initiative bonus<input id="initiativeBonus" type="number" value="0" /></label>
               <label class="field">Hit dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
+              <label class="field">Hit dice left<input id="hitDiceLeft" type="number" min="0" inputmode="numeric" placeholder="all" /></label>
             </div>
           </details>
         </div>
@@ -102,6 +103,10 @@
         <summary>Temp HP</summary>
         <div class="hp-tools-body">
           <label class="field">Temp HP<input id="tempHp" type="number" min="0" value="0" inputmode="numeric" /></label>
+          <div class="hit-dice-spend">
+            <button id="spendHitDieBtn" type="button" class="chip-btn" title="Short rest: roll one hit die plus your Constitution modifier and heal that much">Spend hit die</button>
+            <span class="muted" id="hitDiceReadout" aria-live="polite"></span>
+          </div>
         </div>
       </details>
 
@@ -118,8 +123,8 @@
       </div>
 
       <div class="vital vital-rest" role="group" aria-label="Rests">
-        <button id="topShortRest" type="button" class="chip-btn" title="Short rest: regain one rage and reset short-rest item counters">Short rest</button>
-        <button id="topLongRest" type="button" class="chip-btn" title="Long rest: regain all rages and item charges, and end Haste">Long rest</button>
+        <button id="topShortRest" type="button" class="chip-btn" title="Short rest: regain one rage, reset short-rest item counters and open Spend hit die">Short rest</button>
+        <button id="topLongRest" type="button" class="chip-btn" title="Long rest: full HP and hit dice, all rages and item charges, and ends Haste">Long rest</button>
       </div>
 
       <input id="damageTaken" type="number" readonly hidden />
@@ -196,7 +201,7 @@
               <button id="itemsAddMine" type="button" class="chip-btn primary">Add my objects</button>
               <button id="itemsAddCustom" type="button" class="chip-btn">Add item</button>
               <button id="itemsShortRest" type="button" class="chip-btn" title="Short rest: regain one rage and reset short-rest counters">Short rest</button>
-              <button id="itemsLongRest" type="button" class="chip-btn" title="Long rest: regain all rages and item charges, and end Haste">Long rest</button>
+              <button id="itemsLongRest" type="button" class="chip-btn" title="Long rest: full HP and hit dice, all rages and item charges, and ends Haste">Long rest</button>
             </div>
             <p id="itemsNotice" class="muted" aria-live="polite"></p>
             <div id="itemsChips" class="item-chips" hidden></div>

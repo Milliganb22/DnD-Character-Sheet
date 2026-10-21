@@ -62,6 +62,7 @@ const simpleFields = [
   "initiative",
   "speed",
   "hitDice",
+  "hitDiceLeft",
   "maxHp",
   "currentHp",
   "tempHp",
@@ -553,6 +554,70 @@ function undoRage() {
   scheduleSave();
 }
 
+// ---- Hit dice (short rest spending, long rest recovery) ----
+
+function parseHitDice() {
+  const match = /^\s*(\d+)\s*d\s*(\d+)\s*$/i.exec(document.getElementById("hitDice").value);
+  return match ? { count: Number(match[1]), sides: Number(match[2]) } : null;
+}
+
+// An empty "Hit dice left" box means none are spent yet.
+function hitDiceLeft(dice = parseHitDice()) {
+  if (!dice) {
+    return 0;
+  }
+  const raw = document.getElementById("hitDiceLeft").value;
+  return raw === "" ? dice.count : Math.min(dice.count, Math.max(0, Number(raw) || 0));
+}
+
+function updateHitDiceReadout() {
+  const dice = parseHitDice();
+  const readout = document.getElementById("hitDiceReadout");
+  const button = document.getElementById("spendHitDieBtn");
+  if (!dice) {
+    readout.textContent = "Add your hit dice (e.g. 6d12) under Details.";
+    button.disabled = true;
+    return;
+  }
+  const left = hitDiceLeft(dice);
+  readout.textContent = `${left} of ${dice.count} d${dice.sides} left`;
+  button.disabled = left < 1;
+}
+
+function spendHitDie() {
+  const dice = parseHitDice();
+  if (!dice || hitDiceLeft(dice) < 1) {
+    setStatus(dice ? "No hit dice left to spend." : "Set your hit dice under Details first.", "status-error");
+    return;
+  }
+  const maxHp = Math.max(1, Number(document.getElementById("maxHp").value) || 1);
+  const currentHpEl = document.getElementById("currentHp");
+  const currentHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
+  if (currentHp >= maxHp) {
+    setStatus("You are already at full HP, so no hit die was spent.", "status-error");
+    return;
+  }
+  const conMod = getModifier(Number(document.getElementById("con").value) || 10);
+  const roll = 1 + Math.floor(Math.random() * dice.sides);
+  const healed = Math.max(0, roll + conMod);
+  currentHpEl.value = String(Math.min(maxHp, currentHp + healed));
+  if (currentHp === 0 && healed > 0) {
+    clearDeathSaves();
+  }
+  document.getElementById("hitDiceLeft").value = String(hitDiceLeft(dice) - 1);
+  updateDerived();
+  scheduleSave();
+  setStatus(`Spent a d${dice.sides}: rolled ${roll} ${conMod < 0 ? "-" : "+"} ${Math.abs(conMod)} = ${healed} HP. Now ${currentHpEl.value}/${maxHp}, ${hitDiceLeft(dice)} hit dice left.`, "status-ok");
+}
+
+// Long rest: all HP back, temp HP gone, death saves cleared, all hit dice regained (2024 rules).
+function restoreAfterLongRest() {
+  document.getElementById("tempHp").value = "0";
+  document.getElementById("currentHp").value = String(Math.max(1, Number(document.getElementById("maxHp").value) || 1));
+  document.getElementById("hitDiceLeft").value = "";
+  clearDeathSaves();
+}
+
 function applyHpAdjustment(mode = "damage") {
   const amountInput = document.getElementById("hpAdjustAmount");
   const maxHpEl = document.getElementById("maxHp");
@@ -619,6 +684,7 @@ function updateDerived({ skipClamp = false } = {}) {
   }
   const shownHp = Math.min(maxHp, Math.max(0, Number(currentHpEl.value) || 0));
   document.getElementById("damageTaken").value = String(maxHp - shownHp);
+  updateHitDiceReadout();
 
   const isRaging = document.getElementById("isRaging").checked;
   const rageBonus = isRaging ? rageDamageByLevel(level) : 0;
@@ -779,6 +845,10 @@ function checkLevelUp() {
   const hitDice = document.getElementById("hitDice");
   const match = /^\s*(\d+)d(\d+)\s*$/i.exec(hitDice.value);
   if (match) {
+    const leftEl = document.getElementById("hitDiceLeft");
+    if (leftEl.value !== "") {
+      leftEl.value = String((Number(leftEl.value) || 0) + (target - Number(match[1])));
+    }
     hitDice.value = `${target}d${match[2]}`;
   }
   updateDerived();
@@ -1125,18 +1195,22 @@ function bindEvents() {
     updateDerived();
     scheduleSave();
     Items.shortRest();
-    setStatus("Short rest: regained one rage and reset short-rest counters.", "status-ok");
+    // After the click finishes, so the click-elsewhere handler does not close it straight away.
+    setTimeout(() => {
+      document.querySelector(".hp-tools").open = true;
+    }, 0);
+    setStatus("Short rest: regained one rage and reset short-rest counters. Use Spend hit die to heal.", "status-ok");
   });
 
   document.getElementById("rageLongRestBtn").addEventListener("click", () => {
     const level = document.getElementById("level").value;
     document.getElementById("rageUsesLeft").value = String(rageUsesByLevel(level));
     rageUseSpent = false;
-    updateDerived();
-    scheduleSave();
+    restoreAfterLongRest();
     Items.longRest();
     updateDerived();
-    setStatus("Long rest: all rages and item charges regained, and Haste ended.", "status-ok");
+    scheduleSave();
+    setStatus("Long rest: HP, hit dice, all rages and item charges regained, and Haste ended.", "status-ok");
   });
 
   document.addEventListener("visibilitychange", () => {
@@ -1193,6 +1267,7 @@ function bindEvents() {
   document.getElementById("hpDamageBtn").addEventListener("click", () => applyHpAdjustment("damage"));
   document.getElementById("hpHealBtn").addEventListener("click", () => applyHpAdjustment("heal"));
   document.getElementById("hpFullBtn").addEventListener("click", () => applyHpAdjustment("full"));
+  document.getElementById("spendHitDieBtn").addEventListener("click", spendHitDie);
 
   document.getElementById("hpAdjustAmount").addEventListener("keydown", (event) => {
     if (event.key === "Enter") {

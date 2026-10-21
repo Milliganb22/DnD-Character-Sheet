@@ -2993,3 +2993,20 @@ body[data-tab="rules"] .levelup {
     font-size: 0.8rem;
   }
 }
+
+/* Short rest: spend a hit die from the Temp HP drawer */
+.hit-dice-spend {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.hit-dice-spend .chip-btn {
+  min-height: 2.4rem;
+  padding: 0 1rem;
+}
+
+.hit-dice-spend .chip-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

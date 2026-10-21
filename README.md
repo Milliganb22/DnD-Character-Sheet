@@ -136,7 +136,7 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 ## Top Bar and Levelling Up
 
 - **Damage / Heal:** type an amount in the top bar and press **Damage** or **Heal** (Enter applies damage). Temp HP and "Back to full HP" are under **Temp HP**. Damage uses up Temp HP first.
-- **Short rest / Long rest** are in the top bar as well as the Magic items panel. A short rest gives back one rage; a long rest gives back all rages and item charges and ends Haste.
+- **Short rest / Long rest** are in the top bar as well as the Magic items panel. A short rest gives back one rage and opens **Spend hit die** (rolls a die plus your Constitution modifier and heals that much; HP is not restored automatically, as in the rules). A long rest gives back all HP, all hit dice, all rages and item charges, clears temp HP and death saves, and ends Haste. Hit dice left is tracked under Details (empty means none spent).
 - **Levelling up:** when you type enough Experience to reach the next level, the level goes up on its own (it never goes down). The proficiency bonus, rage uses, rage damage and hit dice update, and a **Level up** banner lists the new class features from the built-in rules, plus a box to add your hit point gain to your maximum and current HP. Roll the die or use the average. You still add new features to Features and Traits yourself, and choose ability score improvements. The banner stays until you dismiss it.
 - **Battle turn tracker:** Extra Attack gives 2 attacks per Attack action. With Haste on, a **Haste action** appears and the turn counter allows a third attack (the Haste action allows one weapon attack only). A natural 20 doubles the damage dice, not the flat bonuses.
 
