@@ -41,7 +41,20 @@ function trimBlankLines(lines) {
 // Splits pasted text into notes wherever a line looks like "Session 12", "## Session 12: Title", "**Session 12**".
 // Text before the first heading becomes an unnumbered intro note.
 function parseSessions(text) {
-  const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
+  // Word and Pages exports use U+2028/U+2029 (and sometimes vertical tabs) as line breaks.
+  const rawLines = String(text ?? "")
+    .replace(/\r\n?|[\u2028\u2029\u0085\u000b\u000c]/g, "\n")
+    .split("\n");
+  // A heading broken over two lines ("Session" then "12 May 27th") is joined back together.
+  const lines = [];
+  for (let i = 0; i < rawLines.length; i += 1) {
+    if (/^[ \t\u00a0]*(?:session|sess|ses|sesh)\.?[ \t\u00a0]*$/i.test(rawLines[i]) && i + 1 < rawLines.length && /^[ \t\u00a0]*\d{1,4}\b/.test(rawLines[i + 1])) {
+      lines.push(`${rawLines[i].trim()} ${rawLines[i + 1].trim()}`);
+      i += 1;
+    } else {
+      lines.push(rawLines[i]);
+    }
+  }
   const notes = [];
   const intro = [];
   let current = null;
@@ -58,8 +71,10 @@ function parseSessions(text) {
   };
 
   lines.forEach((line) => {
-    const match = SESSION_HEADING.exec(line);
-    const unsorted = match ? null : UNSORTED_HEADING.exec(line);
+    // Non-breaking spaces from word processors count as ordinary spaces when looking for headings.
+    const probe = line.replace(/\u00a0/g, " ");
+    const match = SESSION_HEADING.exec(probe);
+    const unsorted = match ? null : UNSORTED_HEADING.exec(probe);
     if (match) {
       finish();
       current = { session: Number(match[1]), title: cleanHeadingTitle(match[2]), lines: [] };
