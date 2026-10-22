@@ -331,6 +331,8 @@ function getData() {
   data.attacks = collectAttackRows();
   data.battle = Battle.collect();
   data.items = Items.collect();
+  data.features = Features.collect();
+  data.acAuto = document.getElementById("acAuto").checked;
   data.levelUp = levelUpState ? { ...levelUpState } : null;
   data.rageUseSpent = rageUseSpent;
   return data;
@@ -398,6 +400,8 @@ function setData(data) {
   const attackRows = Array.isArray(data.attacks) ? data.attacks : parseLegacyAttacks(data);
   buildAttacksTable(attackRows);
   Items.apply(data.items);
+  Features.apply(data.features);
+  document.getElementById("acAuto").checked = Boolean(data.acAuto);
   levelUpState = sanitizeLevelUp(data.levelUp);
   renderLevelUp();
   Battle.apply(data.battle);
@@ -690,7 +694,7 @@ function updateDerived({ skipClamp = false } = {}) {
   const rageBonus = isRaging ? rageDamageByLevel(level) : 0;
   const hasPrimalKnowledge = isRaging && level >= 3;
 
-  const fx = Items.effects();
+  const fx = sheetEffects();
   const abilityMods = {};
   ABILITIES.forEach((ab) => {
     const score = Number(document.getElementById(ab.key).value) || 10;
@@ -699,11 +703,22 @@ function updateDerived({ skipClamp = false } = {}) {
     document.getElementById(`${ab.key}Mod`).textContent = formatSigned(mod);
   });
 
+  // Unarmored Defense: 10 + Dex + Con. The AC box is calculated while the box in Details is ticked.
+  const acEl = document.getElementById("ac");
+  const acAuto = document.getElementById("acAuto").checked;
+  acEl.readOnly = acAuto;
+  if (acAuto) {
+    acEl.value = String(10 + abilityMods.dex + abilityMods.con);
+  }
+
   SAVES.forEach((s) => {
     const proficient = document.getElementById(`${s.key}Prof`).checked;
-    const total = abilityMods[s.ability] + (proficient ? prof : 0);
-    const advText = (isRaging && s.ability === "str") || (s.ability === "dex" && fx.saveAdvantage.dex.length) ? " (Adv)" : "";
-    document.getElementById(`${s.key}Val`).textContent = `${formatSigned(total)}${advText}`;
+    const total = abilityMods[s.ability] + (proficient ? prof : 0) + fx.d20Penalty;
+    const hasAdv = (isRaging && s.ability === "str") || (s.ability === "dex" && fx.saveAdvantage.dex.length > 0);
+    const hasDis = s.ability === "dex" && fx.saveDisadvantage.dex.length > 0;
+    const advText = hasAdv && !hasDis ? " (Adv)" : hasDis && !hasAdv ? " (Dis)" : "";
+    const failed = (fx.autoFailSaves[s.ability] || []).length > 0;
+    document.getElementById(`${s.key}Val`).textContent = failed ? "Auto-fail" : `${formatSigned(total)}${advText}`;
   });
 
   SKILLS.forEach((s) => {
@@ -711,20 +726,20 @@ function updateDerived({ skipClamp = false } = {}) {
     const expertise = document.getElementById(`${s.key}Expert`).checked;
     const profMult = expertise ? 2 : proficient ? 1 : 0;
     const itemBonus = fx.skillBonus[s.key] || 0;
-    const baseTotal = abilityMods[s.ability] + profMult * prof + itemBonus;
+    const baseTotal = abilityMods[s.ability] + profMult * prof + itemBonus + fx.d20Penalty;
 
     if (hasPrimalKnowledge && PRIMAL_KNOWLEDGE_SKILLS.has(s.key) && s.ability !== "str") {
-      const strTotal = abilityMods.str + profMult * prof + itemBonus;
+      const strTotal = abilityMods.str + profMult * prof + itemBonus + fx.d20Penalty;
       document.getElementById(`${s.key}Val`).textContent = `${formatSigned(baseTotal)} / STR ${formatSigned(strTotal)} (Adv)`;
       return;
     }
 
-    const advText = isRaging && s.ability === "str" ? " (Adv)" : "";
+    const advText = (isRaging || fx.checkAdvantage.str.length > 0) && s.ability === "str" ? " (Adv)" : "";
     document.getElementById(`${s.key}Val`).textContent = `${formatSigned(baseTotal)}${advText}`;
   });
 
   const initiativeBonus = Number(document.getElementById("initiativeBonus").value) || 0;
-  document.getElementById("initiative").value = String(abilityMods.dex + initiativeBonus);
+  document.getElementById("initiative").value = String(abilityMods.dex + initiativeBonus + fx.d20Penalty);
 
   PASSIVE_SKILLS.forEach(({ skill, outputId }) => {
     const def = SKILLS.find((s) => s.key === skill);
@@ -776,23 +791,54 @@ function updateDerived({ skipClamp = false } = {}) {
   updateItemVitals(fx);
   updateXpReadout();
   updateHeaderAndVitals();
+  Features.refresh();
   document.getElementById("undoRageBtn").hidden = !(isRaging && rageUseSpent);
   Battle.refresh();
 }
 
 // Shows AC and Speed as they are with items on (Haste, the Colossus Greatsword's burden) next to the numbers you typed.
+// What the sheet uses: magic item effects plus class feature and condition effects, with safe defaults for anything
+// not ready yet.
+function sheetEffects() {
+  return {
+    speedBonus: 0,
+    speedZero: false,
+    checkAdvantage: { str: [] },
+    checkDisadvantage: [],
+    saveDisadvantage: { dex: [] },
+    autoFailSaves: { str: [], dex: [] },
+    attackAdvantage: [],
+    attackDisadvantage: [],
+    d20Penalty: 0,
+    initiativeAdvantage: [],
+    initiativeDisadvantage: [],
+    incapacitated: [],
+    featureNotes: [],
+    conditionNotes: [],
+    ...Items.effects()
+  };
+}
+
+function effectiveSpeed(fx) {
+  const speed = Number(document.getElementById("speed").value) || 0;
+  return fx.speedZero ? 0 : Math.max(0, speed + (fx.speedBonus || 0) - fx.speedPenalty) * fx.speedMultiplier;
+}
+
 function updateItemVitals(fx) {
   const ac = Number(document.getElementById("ac").value) || 0;
   const speed = Number(document.getElementById("speed").value) || 0;
   const acNow = ac + fx.acBonus;
-  const speedNow = Math.max(0, speed - fx.speedPenalty) * fx.speedMultiplier;
+  const speedNow = effectiveSpeed(fx);
   const show = (id, changedValue, text) => {
     const node = document.getElementById(id);
     node.hidden = !changedValue;
     node.textContent = changedValue ? text : "";
   };
-  show("acEffective", acNow !== ac, `${acNow} with items`);
-  show("speedEffective", speedNow !== speed, `${speedNow} ft with items`);
+  show("acEffective", acNow !== ac, `${acNow} with effects`);
+  show("speedEffective", speedNow !== speed, `${speedNow} ft with effects`);
+  const adv = fx.initiativeAdvantage.length > 0;
+  const dis = fx.initiativeDisadvantage.length > 0;
+  show("initEffective", adv !== dis, adv ? "Advantage" : "Disadvantage");
 }
 
 // ---- Levelling up from experience points ----
@@ -1014,7 +1060,10 @@ function saveToLocal(auto = false) {
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(getData()));
+    const json = JSON.stringify(getData());
+    localStorage.setItem(STORAGE_KEY, json);
+    maybeSnapshot(json);
+    updateBackupStrip();
     const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     setSaveState(`Saved ${time}`);
     if (!auto) {
@@ -1053,6 +1102,113 @@ function loadFromLocal() {
   }
 }
 
+// ---- Restore points and backup reminders ----
+// The sheet only lives in this browser, so it keeps a few automatic copies (to undo a reset, a bad import or a mistake)
+// and reminds you to export a file, which is the only copy that survives the browser clearing its site data.
+
+const RESTORE_KEY = "dnd-sheet-restore-points";
+const EXPORT_KEY = "dnd-sheet-last-export";
+const SNOOZE_KEY = "dnd-sheet-backup-snooze";
+const RESTORE_MAX = 5;
+const RESTORE_GAP_MS = 6 * 60 * 60 * 1000;
+const REMIND_AFTER_DAYS = 7;
+const SNOOZE_DAYS = 2;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function readRestorePoints() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RESTORE_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((p) => p && typeof p.time === "number" && typeof p.data === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+// Keeps up to five copies, at most one every six hours. force: take one now (before a reset or an import).
+function maybeSnapshot(json, force = false) {
+  try {
+    const points = readRestorePoints();
+    const last = points[0];
+    if (last && (last.data === json || (!force && Date.now() - last.time < RESTORE_GAP_MS))) {
+      return;
+    }
+    points.unshift({ time: Date.now(), data: json });
+    points.length = Math.min(points.length, RESTORE_MAX);
+    localStorage.setItem(RESTORE_KEY, JSON.stringify(points));
+  } catch {
+    // storage full or blocked: skip the extra copy
+  }
+}
+
+function snapshotBeforeChange() {
+  if (localStorage.getItem(STORAGE_KEY)) {
+    maybeSnapshot(JSON.stringify(getData()), true);
+  }
+}
+
+function renderRestoreList() {
+  const box = document.getElementById("restoreList");
+  box.textContent = "";
+  const points = readRestorePoints();
+  if (!points.length) {
+    box.append(mk("p", { class: "muted", text: "No copies yet. One is saved automatically every few hours while you play." }));
+    return;
+  }
+  points.forEach((point, index) => {
+    const when = new Date(point.time).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    let name = "";
+    try {
+      name = JSON.parse(point.data).name || "";
+    } catch {
+      name = "";
+    }
+    const button = mk("button", { type: "button", class: "menu-btn", "data-restore": String(index), text: `${when}${name ? ` (${name})` : ""}` });
+    box.append(button);
+  });
+}
+
+function restoreFromPoint(index) {
+  const point = readRestorePoints()[index];
+  if (!point) {
+    return;
+  }
+  if (!confirm("Replace the sheet with this saved copy? Your current sheet is kept as a copy first, so you can switch back.")) {
+    return;
+  }
+  try {
+    const parsed = JSON.parse(point.data);
+    snapshotBeforeChange();
+    setData(parsed);
+    saveToLocal();
+    document.getElementById("restoreMenu").open = false;
+    setStatus("Restored the saved copy.", "status-ok");
+  } catch {
+    setStatus("That saved copy could not be read.", "status-error");
+  }
+}
+
+function updateBackupStrip() {
+  const strip = document.getElementById("backupStrip");
+  let message = "";
+  try {
+    const hasData = Boolean(localStorage.getItem(STORAGE_KEY));
+    const lastExport = Number(localStorage.getItem(EXPORT_KEY)) || 0;
+    const snoozedUntil = Number(localStorage.getItem(SNOOZE_KEY)) || 0;
+    const days = lastExport ? Math.floor((Date.now() - lastExport) / DAY_MS) : null;
+    if (hasData && Date.now() >= snoozedUntil && (days === null || days >= REMIND_AFTER_DAYS)) {
+      message =
+        days === null
+          ? "You have not exported a backup of this sheet yet. It is stored only in this browser, so clearing the browser's site data would erase it."
+          : `Your last backup was ${days} days ago. The sheet is stored only in this browser, so an export is the safe copy.`;
+      message += " Notes and maps have their own Export on their tabs.";
+    }
+  } catch {
+    message = "";
+  }
+  strip.hidden = !message;
+  document.getElementById("backupText").textContent = message;
+}
+
 function exportJson() {
   const blob = new Blob([JSON.stringify(getData(), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1063,6 +1219,12 @@ function exportJson() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  try {
+    localStorage.setItem(EXPORT_KEY, String(Date.now()));
+  } catch {
+    // storage blocked: the reminder will simply stay
+  }
+  updateBackupStrip();
   setStatus("Exported character-sheet.json", "status-ok");
 }
 
@@ -1074,6 +1236,7 @@ function importJson(file) {
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("not a character object");
       }
+      snapshotBeforeChange();
       setData(parsed);
       saveToLocal();
       setStatus("Imported character JSON.", "status-ok");
@@ -1085,9 +1248,10 @@ function importJson(file) {
 }
 
 function resetForm() {
-  if (!confirm("Reset all fields? This cannot be undone.")) {
+  if (!confirm("Reset all fields? A copy is kept under File, Restore a saved copy.")) {
     return;
   }
+  snapshotBeforeChange();
 
   document.querySelectorAll("input").forEach((el) => {
     // Notes (and other tabs that store their own data) are not part of the character sheet.
@@ -1125,6 +1289,7 @@ function resetForm() {
   buildAttacksTable();
   Battle.reset();
   Items.reset();
+  Features.reset();
   levelUpState = null;
   renderLevelUp();
   rageUseSpent = false;
@@ -1167,7 +1332,8 @@ function bindEvents() {
       if (left > 0) {
         leftEl.value = String(left - 1);
         rageUseSpent = true;
-        setStatus(`Rage started. ${left - 1} left.`, "status-ok");
+        const pounce = /barbarian/i.test(document.getElementById("class").value) && Number(document.getElementById("level").value) >= 7;
+        setStatus(`Rage started. ${left - 1} left.${pounce ? " Instinctive Pounce: you can move up to half your Speed as part of that bonus action." : ""}`, "status-ok");
       } else {
         rageUseSpent = false;
         setStatus("No rages left in the counter. Edit it if that's wrong.", "status-error");
@@ -1208,9 +1374,15 @@ function bindEvents() {
     rageUseSpent = false;
     restoreAfterLongRest();
     Items.longRest();
+    const hadExhaustion = Features.exhaustion() > 0;
+    Features.longRest();
     updateDerived();
     scheduleSave();
-    setStatus("Long rest: HP, hit dice, all rages and item charges regained, and Haste ended.", "status-ok");
+    const wildHeart = /barbarian/i.test(document.getElementById("class").value) && Number(level) >= 6;
+    setStatus(
+      `Long rest: HP, hit dice, all rages and item charges regained, and Haste ended.${hadExhaustion ? " Exhaustion dropped by 1." : ""}${wildHeart ? " Choose today's Aspect of the Wild." : ""}`,
+      "status-ok"
+    );
   });
 
   document.addEventListener("visibilitychange", () => {
@@ -1319,6 +1491,22 @@ function bindEvents() {
     }
   });
 
+  document.getElementById("restoreMenu").addEventListener("toggle", renderRestoreList);
+  document.getElementById("restoreList").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-restore]");
+    if (button) {
+      restoreFromPoint(Number(button.dataset.restore));
+    }
+  });
+  document.getElementById("backupNow").addEventListener("click", exportJson);
+  document.getElementById("backupLater").addEventListener("click", () => {
+    try {
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * DAY_MS));
+    } catch {
+      // storage blocked: nothing to remember
+    }
+    updateBackupStrip();
+  });
   document.getElementById("saveBtn").addEventListener("click", () => saveToLocal());
   document.getElementById("exportBtn").addEventListener("click", exportJson);
   document.getElementById("resetBtn").addEventListener("click", resetForm);
@@ -1339,6 +1527,7 @@ function init() {
   buildAttacksTable();
   bindLevelUp();
   Items.init();
+  Features.init();
   Battle.init();
   Notes.init();
   Maps.init();
@@ -1347,6 +1536,9 @@ function init() {
   loadFromLocal();
   renderAllCards();
   updateDerived();
+  updateBackupStrip();
+  // Ask the browser not to clear this site's data when space is short (it may decline).
+  Store.requestPersistence();
   Tabs.start();
 
   // Reference folds start closed on phones so the page is not a wall of text.

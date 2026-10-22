@@ -70,6 +70,12 @@ Import when:
 - Moving your character to another device/browser
 - Loading a character a friend shared with you
 
+### Backup reminder and saved copies
+
+- A strip under the top bar reminds you to export when you have never exported, or the last export is a week old. **Export now** downloads the file; **Remind me later** hides it for two days. Notes and maps have their own Export on their tabs.
+- The sheet also keeps up to five automatic copies in the browser (at most one every six hours, plus one before a Reset or an Import). **File, Restore a saved copy** puts one back. These protect against mistakes, not against the browser clearing its site data, so an exported file is still the safe copy.
+- The sheet asks the browser to protect its stored data from automatic clean-up. The browser may refuse.
+
 ### Recommended Backup Habit
 
 - Click `Save` during play
@@ -135,10 +141,25 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 
 ## Top Bar and Levelling Up
 
-- **Damage / Heal:** type an amount in the top bar and press **Damage** or **Heal** (Enter applies damage). Temp HP and "Back to full HP" are under **Temp HP**. Damage uses up Temp HP first.
+- **Damage / Heal:** type an amount in the top bar and press **Damage** or **Heal** (Enter applies damage). **Full HP** sits next to Heal. Temp HP is under **Temp HP**. Damage uses up Temp HP first.
 - **Short rest / Long rest** are in the top bar as well as the Magic items panel. A short rest gives back one rage and opens **Spend hit die** (rolls a die plus your Constitution modifier and heals that much; HP is not restored automatically, as in the rules). A long rest gives back all HP, all hit dice, all rages and item charges, clears temp HP and death saves, and ends Haste. Hit dice left is tracked under Details (empty means none spent).
 - **Levelling up:** when you type enough Experience to reach the next level, the level goes up on its own (it never goes down). The proficiency bonus, rage uses, rage damage and hit dice update, and a **Level up** banner lists the new class features from the built-in rules, plus a box to add your hit point gain to your maximum and current HP. Roll the die or use the average. You still add new features to Features and Traits yourself, and choose ability score improvements. The banner stays until you dismiss it.
 - **Battle turn tracker:** Extra Attack gives 2 attacks per Attack action. With Haste on, a **Haste action** appears and the turn counter allows a third attack (the Haste action allows one weapon attack only). A natural 20 doubles the damage dice, not the flat bonuses.
+
+## Class and Species Features, Conditions
+
+The **Class and species features** panel (Sheet tab, with a short version on the Battle tab) only shows what your Level, Class and Race fit. Set Class to Barbarian and Race to Goliath under Details. Nothing unlocks until the level is reached, and the level rises by itself when you add enough Experience.
+
+- **Goliath, Stone's Endurance** (Giant Ancestry): uses equal to your proficiency bonus, back on a long rest. Use it as a reaction: roll 1d12 + your Constitution modifier and reduce the damage by that total.
+- **Goliath, Large Form** (level 5): once per long rest, for 10 minutes. While it is on, Speed is +10 ft and Strength checks have Advantage (shown on the sheet and in Battle).
+- **Aspect of the Wild** (Barbarian 6): choose Owl, Panther or Salmon after each long rest. The long rest message reminds you.
+- **Feral Instinct and Instinctive Pounce** (Barbarian 7): Advantage on Initiative (shown under Initiative), and a reminder to move half your Speed when you start a Rage.
+- **Brutal Strike** (Barbarian 9): in Battle, after you turn on Reckless Attack, a **Brutal Strike** button appears. You give up Advantage on that one attack (it can't have Disadvantage), add a 1d10 damage die (doubled on a critical hit), and the sheet reminds you of the Forceful Blow and Hamstring Blow effects. It can be used on one attack each turn.
+- **Rage of the Wilds** is Bear: the Rage panel lists resistance to all damage except Force, Necrotic, Psychic and Radiant.
+- **Unarmored Defense:** tick the box under Details to calculate AC as 10 + Dex + Con.
+- The Path of the Wild Heart is not in the free rules, so those descriptions were written from the 2024 Player's Handbook. Check them against your book.
+
+**Conditions:** the **Conditions** strip under the top bar toggles the 2024 conditions and an Exhaustion level. The sheet applies them: Disadvantage or Advantage on attack rolls and ability checks, Disadvantage on Dexterity saves when Restrained, automatic failure of Strength and Dexterity saves when Stunned, Paralyzed, Petrified or Unconscious, Speed 0, and Incapacitated switches off Danger Sense and warns that your Rage ends. Exhaustion lowers every d20 roll by 2 per level and Speed by 5 ft per level, and a long rest removes one level. Advantage and Disadvantage still cancel each other.
 
 ## Magic Items
 

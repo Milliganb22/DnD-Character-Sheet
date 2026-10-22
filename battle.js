@@ -108,7 +108,9 @@ function rollFlagText(result) {
 }
 
 // Pure attack math. weapon: see sanitizeWeapon. rolls: {d20a, d20b, ac, dice, extra}. ctx: {mods, prof, raging,
-// rageDamage, reckless, rollMode, gwm}. Returns everything the UI needs; touches no DOM.
+// rageDamage, reckless, rollMode, gwm, advFrom, disFrom, d20Penalty, brutal}. advFrom/disFrom are extra named sources of
+// Advantage/Disadvantage (conditions), d20Penalty is a negative number (Exhaustion) and brutal is Brutal Strike.
+// Returns everything the UI needs; touches no DOM.
 function computeAttack(weapon, rolls, ctx) {
   const abilityKey = weapon.ability === "dex" ? "dex" : "str";
   const abilityMod = ctx.mods[abilityKey];
@@ -120,6 +122,9 @@ function computeAttack(weapon, rolls, ctx) {
   ];
   if (magic) {
     attackParts.push({ label: "Magic", value: magic });
+  }
+  if (ctx.d20Penalty) {
+    attackParts.push({ label: "Exhaustion", value: ctx.d20Penalty });
   }
   const attackBonus = sumValues(attackParts);
 
@@ -136,6 +141,19 @@ function computeAttack(weapon, rolls, ctx) {
   }
   if (weapon.disadvantage) {
     disadvantageFrom.push(weapon.disadvantage);
+  }
+  (ctx.advFrom || []).forEach((source) => advantageFrom.push(source));
+  (ctx.disFrom || []).forEach((source) => disadvantageFrom.push(source));
+  // Brutal Strike: on one Strength attack made with Reckless Attack you give up all Advantage on the roll, and the
+  // roll can't have Disadvantage. In return a hit deals an extra 1d10 and has an effect.
+  let brutal = null;
+  if (ctx.brutal && ctx.reckless && abilityKey === "str") {
+    if (disadvantageFrom.length) {
+      brutal = { active: false, blocked: true };
+    } else {
+      brutal = { active: true, blocked: false };
+      advantageFrom.length = 0;
+    }
   }
   const { state, first, second, natural, needSecond } = resolveD20(advantageFrom, disadvantageFrom, rolls);
 
@@ -167,14 +185,20 @@ function computeAttack(weapon, rolls, ctx) {
   const mainRolled = toWholeNumber(rolls.dice, 0, 999);
   const extraRolled = toWholeNumber(rolls.extra, 0, 999);
   const needsExtra = Boolean(extraInstruction);
+  const brutalInstruction = brutal && brutal.active ? diceText("1d10", multiplier) : "";
+  const brutalRolled = toWholeNumber(rolls.brutal, 0, 999);
+  const needsBrutal = Boolean(brutalInstruction);
 
   const parts = [];
   let damageTotal = null;
   const byType = {};
-  if (mainRolled !== null && (!needsExtra || extraRolled !== null)) {
+  if (mainRolled !== null && (!needsExtra || extraRolled !== null) && (!needsBrutal || brutalRolled !== null)) {
     parts.push({ label: `${mainInstruction || "Dice"}`, value: mainRolled, type: weapon.type });
     if (needsExtra) {
       parts.push({ label: extraInstruction, value: extraRolled, type: weapon.extraType || weapon.type });
+    }
+    if (needsBrutal) {
+      parts.push({ label: `${brutalInstruction} Brutal Strike`, value: brutalRolled, type: weapon.type });
     }
     flat.forEach((piece) => parts.push(piece));
     damageTotal = Math.max(0, sumValues(parts));
@@ -223,6 +247,9 @@ function computeAttack(weapon, rolls, ctx) {
     twoHanded: useVersatile,
     extraInstruction,
     needsExtra,
+    brutal,
+    brutalInstruction,
+    needsBrutal,
     parts,
     damageTotal,
     byType,
@@ -235,8 +262,10 @@ function computeAttack(weapon, rolls, ctx) {
 const PRIMAL_SKILLS = new Set(["acrobatics", "intimidation", "perception", "stealth", "survival"]);
 
 // Pure ability check / saving throw math. spec: {kind: "save"|"check"|"skill", ability, skill, proficient, expert,
-// usePrimal}. ctx: {mods, prof, raging, level, dangerSense, rollMode}. Rage gives Advantage on Strength checks and
-// Strength saves (not attack rolls); Danger Sense on Dexterity saves; anything else cancels per resolveD20.
+// usePrimal}. ctx: {mods, prof, raging, level, dangerSense, rollMode, checkAdvantage, checkDisadvantage,
+// saveDisadvantage, autoFail, d20Penalty}. Rage gives Advantage on Strength checks and Strength saves (not attack
+// rolls); Danger Sense on Dexterity saves; the rest come from items, features and conditions; anything else cancels
+// per resolveD20. autoFail lists the conditions that make a Strength or Dexterity save an automatic failure.
 function computeCheck(spec, rolls, ctx) {
   const baseAbility = spec.ability;
   const primalEligible = spec.kind === "skill" && ctx.raging && ctx.level >= 3 && PRIMAL_SKILLS.has(spec.skill) && baseAbility !== "str";
@@ -252,10 +281,24 @@ function computeCheck(spec, rolls, ctx) {
   if (itemBonus) {
     parts.push({ label: "Magic item", value: itemBonus });
   }
+  if (ctx.d20Penalty) {
+    parts.push({ label: "Exhaustion", value: ctx.d20Penalty });
+  }
   const bonus = sumValues(parts);
 
   const advantageFrom = [];
   const disadvantageFrom = [];
+  const isSave = spec.kind === "save";
+  if (!isSave && abilityKey === "str" && ctx.checkAdvantage && ctx.checkAdvantage.str) {
+    ctx.checkAdvantage.str.forEach((source) => advantageFrom.push(source));
+  }
+  if (!isSave && ctx.checkDisadvantage) {
+    ctx.checkDisadvantage.forEach((source) => disadvantageFrom.push(source));
+  }
+  if (isSave && baseAbility === "dex" && ctx.saveDisadvantage && ctx.saveDisadvantage.dex) {
+    ctx.saveDisadvantage.dex.forEach((source) => disadvantageFrom.push(source));
+  }
+  const autoFail = isSave && ctx.autoFail && ctx.autoFail[baseAbility] ? ctx.autoFail[baseAbility] : [];
   if (spec.kind === "save" && baseAbility === "dex" && ctx.saveAdvantage && ctx.saveAdvantage.dex) {
     ctx.saveAdvantage.dex.forEach((source) => advantageFrom.push(source));
   }
@@ -275,8 +318,8 @@ function computeCheck(spec, rolls, ctx) {
   const roll = resolveD20(advantageFrom, disadvantageFrom, rolls);
   const total = roll.natural === null ? null : roll.natural + bonus;
   const dc = toWholeNumber(rolls.dc, 0, 99);
-  const success = total !== null && dc !== null ? total >= dc : null;
-  return { ...roll, abilityKey, parts, bonus, primalEligible, usedPrimal, advantageFrom, disadvantageFrom, total, dc, success };
+  const success = autoFail.length ? false : total !== null && dc !== null ? total >= dc : null;
+  return { ...roll, abilityKey, parts, bonus, primalEligible, usedPrimal, advantageFrom, disadvantageFrom, total, dc, success, autoFail };
 }
 
 // ---- Weapon setup helpers (best-effort guesses from the free-text Attacks list) ----
@@ -395,7 +438,8 @@ const Battle = (() => {
     primal: true,
     danger: true,
     reckless: false,
-    turn: { action: false, bonus: false, reaction: false, haste: false, attacks: 0 },
+    brutal: false,
+    turn: { action: false, bonus: false, reaction: false, haste: false, attacks: 0, brutalUsed: false },
     ready: false
   };
 
@@ -428,9 +472,19 @@ const Battle = (() => {
     return Number($("level").value) || 1;
   }
 
+  const itemEffects = () => (typeof Items !== "undefined" ? Items.effects() : null);
+
+  // Brutal Strike (level 9) is only on offer while Reckless Attack is on, and only once per turn.
+  const brutalAvailable = () => isBarbarian() && level() >= 9;
+
   function readContext() {
     const lvl = level();
+    const fx = itemEffects();
     return {
+      advFrom: fx ? fx.attackAdvantage || [] : [],
+      disFrom: fx ? fx.attackDisadvantage || [] : [],
+      d20Penalty: fx ? fx.d20Penalty || 0 : 0,
+      brutal: state.brutal && brutalAvailable(),
       mods: {
         str: getModifier($("str").value),
         dex: getModifier($("dex").value)
@@ -488,14 +542,15 @@ const Battle = (() => {
     state.imported = false;
     state.selectedId = "";
     state.reckless = false;
+    state.brutal = false;
     state.rollMode = "normal";
     state.twoHanded = false;
     state.checkKind = "save:str";
     state.checkMode = "normal";
     state.primal = true;
     state.danger = true;
-    state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0 };
-    ["btD20a", "btD20b", "btAc", "btDice", "btExtra", "btCheckD20a", "btCheckD20b", "btCheckDc"].forEach((id) => {
+    state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0, brutalUsed: false };
+    ["btD20a", "btD20b", "btAc", "btDice", "btExtra", "btBrutalDie", "btCheckD20a", "btCheckD20b", "btCheckDc"].forEach((id) => {
       $(id).value = "";
     });
     $("btCheckKind").value = state.checkKind;
@@ -587,6 +642,18 @@ const Battle = (() => {
         ? "Only on your first attack each turn"
         : "Advantage on Strength attacks";
     $("btUndoReckless").hidden = !(showReckless && state.reckless);
+    if (!state.reckless) {
+      state.brutal = false;
+    }
+    const brutalBtn = $("btBrutal");
+    brutalBtn.hidden = !(brutalAvailable() && state.reckless);
+    brutalBtn.setAttribute("aria-pressed", String(state.brutal));
+    brutalBtn.disabled = !state.brutal && state.turn.brutalUsed;
+    brutalBtn.querySelector(".toggle-sub").textContent = state.brutal
+      ? "No Advantage on this attack; +1d10 and an effect on a hit"
+      : state.turn.brutalUsed
+        ? "Already used this turn"
+        : "Give up Advantage on one attack for +1d10";
     $("btUndoRage").hidden = !(raging && typeof rageUseSpent !== "undefined" && rageUseSpent);
 
     document.querySelectorAll("#btRollMode input").forEach((radio) => {
@@ -658,11 +725,15 @@ const Battle = (() => {
     const raging = $("isRaging").checked;
     const barbarian = isBarbarian();
 
+    const fx = itemEffects();
+    const initAdv = fx && fx.initiativeAdvantage ? fx.initiativeAdvantage.length : 0;
+    const initDis = fx && fx.initiativeDisadvantage ? fx.initiativeDisadvantage.length : 0;
+    const initNote = initAdv && !initDis ? " (Adv)" : initDis && !initAdv ? " (Dis)" : "";
     const tiles = [
-      ["AC", $("ac").value],
+      ["AC", fx ? String((Number($("ac").value) || 0) + fx.acBonus) : $("ac").value],
       ["HP", `${$("currentHp").value}/${$("maxHp").value}${Number($("tempHp").value) > 0 ? ` +${$("tempHp").value}` : ""}`],
-      ["Speed", `${$("speed").value} ft`],
-      ["Initiative", signed(Number($("initiative").value) || 0)],
+      ["Speed", `${typeof effectiveSpeed === "function" && fx ? effectiveSpeed(fx) : $("speed").value} ft`],
+      ["Initiative", `${signed(Number($("initiative").value) || 0)}${initNote}`],
       ["Proficiency", signed(profByLevel(lvl))],
       ["Passive Perception", $("passivePerception").textContent]
     ];
@@ -703,6 +774,9 @@ const Battle = (() => {
     if (barbarian && lvl >= 2) {
       lines.push("Danger Sense: Advantage on Dexterity saves unless you are Incapacitated");
     }
+    if (fx) {
+      [...(fx.featureNotes || []), ...(fx.conditionNotes || [])].forEach((note) => lines.push(`${note.source}: ${note.text}`));
+    }
     if (lines.length) {
       const list = el("ul", { class: "num-notes" });
       lines.forEach((line) => list.append(el("li", { text: line })));
@@ -724,9 +798,16 @@ const Battle = (() => {
       d20b: $("btD20b").value,
       ac: $("btAc").value,
       dice: $("btDice").value,
-      extra: $("btExtra").value
+      extra: $("btExtra").value,
+      brutal: $("btBrutalDie").value
     };
     const result = computeAttack(weapon, rolls, readContext());
+    const fx = itemEffects();
+    const incap = fx && fx.incapacitated ? fx.incapacitated : [];
+    $("btIncapWarning").hidden = !incap.length;
+    $("btIncapWarning").textContent = incap.length ? `${incap.join(", ")}: you can't take actions, bonus actions or reactions, and your Rage ends early.` : "";
+    $("btBrutalWrap").hidden = !result.needsBrutal;
+    $("btBrutalLabel").textContent = `Brutal Strike die rolled (${result.brutalInstruction || "1d10"})`;
 
     $("btTwoHandedWrap").hidden = !weapon.versatile;
     $("btTwoHandedText").textContent = `Two-handed (${weapon.versatile || ""})`;
@@ -744,6 +825,11 @@ const Battle = (() => {
     const flag = rollFlagText(result);
     if (flag) {
       attackBlock.append(el("p", { class: "res-flag", text: flag }));
+    }
+    if (result.brutal && result.brutal.active) {
+      attackBlock.append(el("p", { class: "res-flag", text: "Brutal Strike: you give up Advantage on this attack roll." }));
+    } else if (result.brutal && result.brutal.blocked) {
+      attackBlock.append(el("p", { class: "res-flag", text: "Brutal Strike needs an attack roll without Disadvantage, so it is off for this attack." }));
     }
     if (result.needSecond) {
       attackBlock.append(el("p", { class: "muted", text: "Enter both d20 rolls." }));
@@ -838,6 +924,9 @@ const Battle = (() => {
     if (result.mastery && result.mastery.key === "topple" && missed) {
       notes.push(`Topple needs a hit. DC would be ${result.mastery.toppleDc}.`);
     }
+    if (result.brutal && result.brutal.active && landed) {
+      notes.push("Brutal Strike: choose one effect. Forceful Blow pushes the target 15 feet straight away, then you can move up to half your Speed straight toward it without provoking Opportunity Attacks. Hamstring Blow reduces its Speed by 15 feet until the start of your next turn (only the most recent Hamstring Blow applies).");
+    }
     if (result.gwmFollowUp && landed) {
       notes.push("Great Weapon Master: on a critical hit (or if the target drops to 0 HP) you can make one attack with the same weapon as a bonus action.");
     }
@@ -883,6 +972,8 @@ const Battle = (() => {
       mods[a.key] = getModifier($(a.key).value);
     });
     const dangerPossible = spec.kind === "save" && spec.ability === "dex" && isBarbarian() && level() >= 2;
+    const fx = itemEffects() || {};
+    const incapacitated = Boolean(fx.incapacitated && fx.incapacitated.length);
     const result = computeCheck(
       spec,
       { d20a: $("btCheckD20a").value, d20b: $("btCheckD20b").value, dc: $("btCheckDc").value },
@@ -891,9 +982,14 @@ const Battle = (() => {
         prof: profByLevel(level()),
         raging: $("isRaging").checked,
         level: level(),
-        dangerSense: dangerPossible && state.danger,
-        saveAdvantage: Items.effects().saveAdvantage,
-        itemSkillBonus: Items.effects().skillBonus,
+        dangerSense: dangerPossible && state.danger && !incapacitated,
+        saveAdvantage: fx.saveAdvantage,
+        itemSkillBonus: fx.skillBonus,
+        checkAdvantage: fx.checkAdvantage,
+        checkDisadvantage: fx.checkDisadvantage,
+        saveDisadvantage: fx.saveDisadvantage,
+        autoFail: fx.autoFailSaves,
+        d20Penalty: fx.d20Penalty,
         rollMode: state.checkMode
       }
     );
@@ -910,6 +1006,11 @@ const Battle = (() => {
     });
 
     const block = el("section", { class: "res-block" }, el("h3", { text: spec.label }));
+    if (result.autoFail.length) {
+      block.append(el("p", { class: "badge badge-miss", text: `Automatic failure (${result.autoFail.join(", ")})` }));
+      out.append(block);
+      return;
+    }
     const flag = rollFlagText(result);
     if (flag) {
       block.append(el("p", { class: "res-flag", text: flag }));
@@ -1018,8 +1119,15 @@ const Battle = (() => {
       renderModifiers();
       renderResult();
     });
+    $("btBrutal").addEventListener("click", () => {
+      state.brutal = !state.brutal;
+      renderModifiers();
+      renderResult();
+    });
+    $("btBrutalDie").addEventListener("input", renderResult);
     $("btUndoReckless").addEventListener("click", () => {
       state.reckless = false;
+      state.brutal = false;
       renderModifiers();
       renderResult();
       setStatus("Reckless Attack cancelled.", "status-ok");
@@ -1078,7 +1186,12 @@ const Battle = (() => {
       const limit = attackLimits().total;
       state.turn.attacks = Math.min(limit, state.turn.attacks + 1);
       state.turn.action = true;
-      ["btD20a", "btD20b", "btDice", "btExtra"].forEach((id) => {
+      // Brutal Strike can be used on one attack each turn.
+      if (state.brutal) {
+        state.turn.brutalUsed = true;
+        state.brutal = false;
+      }
+      ["btD20a", "btD20b", "btDice", "btExtra", "btBrutalDie"].forEach((id) => {
         $(id).value = "";
       });
       renderTurn();
@@ -1088,7 +1201,7 @@ const Battle = (() => {
       setStatus(state.turn.attacks >= limit ? "That was your last attack this action." : "Next attack ready.", "status-ok");
     });
     $("btClear").addEventListener("click", () => {
-      ["btD20a", "btD20b", "btDice", "btExtra"].forEach((id) => {
+      ["btD20a", "btD20b", "btDice", "btExtra", "btBrutalDie"].forEach((id) => {
         $(id).value = "";
       });
       renderResult();
@@ -1103,8 +1216,9 @@ const Battle = (() => {
       }
     });
     $("btNewTurn").addEventListener("click", () => {
-      state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0 };
+      state.turn = { action: false, bonus: false, reaction: false, haste: false, attacks: 0, brutalUsed: false };
       state.reckless = false;
+      state.brutal = false;
       renderModifiers();
       renderTurn();
       renderResult();

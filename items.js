@@ -1,6 +1,6 @@
 "use strict";
 
-// Magic items: worn/wielded and attuned toggles, charges and daily uses, and the effects they have on the sheet
+// Magic items (and, further down, class features and conditions): worn/wielded and attuned toggles, charges and daily uses, and the effects they have on the sheet
 // (Haste, fire resistance, speed penalties, weapon stats). The pure rules live at the top so they can be tested in Node.
 const Items = (() => {
   const MAX_ATTUNED = 3;
@@ -296,7 +296,11 @@ const Items = (() => {
   }
 
   const strScore = () => Number($("str") && $("str").value) || 10;
-  const effects = () => computeEffects(state.items, { str: strScore() });
+  // Item effects plus class feature and condition effects (see Features), so the sheet reads one set of numbers.
+  const effects = () => {
+    const base = computeEffects(state.items, { str: strScore() });
+    return typeof Features !== "undefined" && Features.ready() ? Features.combine(base) : base;
+  };
   const itemById = (id) => state.items.find((i) => i.id === id);
   const stageOf = (item) => (item.preset === "colossus" ? stageFor(item.days) : 0);
   const locked = (item, use) => Boolean(use.minStage && stageOf(item) < use.minStage);
@@ -735,6 +739,431 @@ const Items = (() => {
   };
 })();
 
+// Class and species features (Stone's Endurance, Large Form, Aspect of the Wild, Feral Instinct, Brutal Strike) and
+// conditions with Exhaustion. They only switch on when the Level, Class and Race fields say they apply, so nothing
+// changes until the sheet has levelled up. The pure rules are at the top so they can be tested in Node.
+const Features = (() => {
+  const MAX_EXHAUSTION = 6;
+
+  const ASPECTS = [
+    { key: "owl", label: "Owl", text: "Darkvision out to 60 feet (or 60 feet more if you already have Darkvision)." },
+    { key: "panther", label: "Panther", text: "You have a Climb Speed equal to your Speed." },
+    { key: "salmon", label: "Salmon", text: "You have a Swim Speed equal to your Speed." }
+  ];
+
+  // The 2024 conditions. Flags say what each one does to your own rolls; "text" is the reminder shown on the sheet.
+  const CONDITIONS = [
+    { key: "blinded", label: "Blinded", attackDis: true, text: "You can't see and automatically fail checks that need sight. Attack rolls against you have Advantage." },
+    { key: "charmed", label: "Charmed", text: "You can't attack the charmer or target them with damaging abilities. They have Advantage on social checks against you." },
+    { key: "deafened", label: "Deafened", text: "You can't hear and automatically fail checks that need hearing." },
+    { key: "frightened", label: "Frightened", attackDis: true, checkDis: true, text: "Disadvantage on attack rolls and ability checks while the source of fear is in line of sight. You can't willingly move closer to it." },
+    { key: "grappled", label: "Grappled", speedZero: true, text: "Speed 0. Disadvantage on attack rolls against anyone other than the grappler." },
+    { key: "incapacitated", label: "Incapacitated", incapacitated: true, initDis: true, text: "No actions, bonus actions or reactions. Concentration is broken. Danger Sense and your Rage stop working." },
+    { key: "invisible", label: "Invisible", attackAdv: true, initAdv: true, text: "Advantage on attack rolls and on Initiative. Attack rolls against you have Disadvantage." },
+    { key: "paralyzed", label: "Paralyzed", incapacitated: true, speedZero: true, autoFail: true, text: "Incapacitated, Speed 0, you automatically fail Strength and Dexterity saves. Attacks against you have Advantage, and hits from within 5 feet are critical hits." },
+    { key: "petrified", label: "Petrified", incapacitated: true, speedZero: true, autoFail: true, text: "Turned to stone: Incapacitated, Speed 0, you automatically fail Strength and Dexterity saves. Attacks against you have Advantage." },
+    { key: "poisoned", label: "Poisoned", attackDis: true, checkDis: true, text: "Disadvantage on attack rolls and ability checks." },
+    { key: "prone", label: "Prone", attackDis: true, text: "Disadvantage on your attack rolls. You can crawl, or spend half your Speed to stand. Attacks against you from within 5 feet have Advantage, from farther away Disadvantage." },
+    { key: "restrained", label: "Restrained", speedZero: true, attackDis: true, dexSaveDis: true, text: "Speed 0. Disadvantage on your attack rolls and Dexterity saves. Attack rolls against you have Advantage." },
+    { key: "stunned", label: "Stunned", incapacitated: true, autoFail: true, text: "Incapacitated. You automatically fail Strength and Dexterity saves. Attacks against you have Advantage." },
+    { key: "unconscious", label: "Unconscious", incapacitated: true, speedZero: true, autoFail: true, text: "Incapacitated and Prone, Speed 0, you automatically fail Strength and Dexterity saves. Attacks against you have Advantage, and hits from within 5 feet are critical hits." }
+  ];
+
+  const clampInt = (value, min, max) => Math.min(max, Math.max(min, Math.floor(Number(value)) || min));
+
+  function sanitizeFeatures(raw) {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const known = new Set(CONDITIONS.map((c) => c.key));
+    const conditions = (Array.isArray(src.conditions) ? src.conditions : []).filter((key, i, all) => known.has(key) && all.indexOf(key) === i);
+    return {
+      stonesUsed: clampInt(src.stonesUsed, 0, 20),
+      largeFormUsed: Boolean(src.largeFormUsed),
+      largeFormActive: Boolean(src.largeFormActive),
+      aspect: ASPECTS.some((a) => a.key === src.aspect) ? src.aspect : "",
+      conditions,
+      exhaustion: clampInt(src.exhaustion, 0, MAX_EXHAUSTION)
+    };
+  }
+
+  // A long rest refills the daily features and removes one level of Exhaustion. A short rest changes nothing here.
+  function afterRest(feat, kind) {
+    if (kind !== "long") {
+      return feat;
+    }
+    return { ...feat, stonesUsed: 0, largeFormUsed: false, largeFormActive: false, exhaustion: Math.max(0, feat.exhaustion - 1) };
+  }
+
+  // What the active conditions and Exhaustion do to the character's own rolls.
+  function conditionEffects(keys = [], exhaustion = 0) {
+    const out = { attackAdv: [], attackDis: [], checkDis: [], dexSaveDis: [], autoFail: [], speedZero: [], incapacitated: [], initAdv: [], initDis: [], d20Penalty: 0, speedPenalty: 0, notes: [] };
+    const active = new Set(keys);
+    CONDITIONS.forEach((c) => {
+      if (!active.has(c.key)) {
+        return;
+      }
+      out.notes.push({ source: c.label, text: c.text });
+      [["attackAdv", "attackAdv"], ["attackDis", "attackDis"], ["checkDis", "checkDis"], ["dexSaveDis", "dexSaveDis"], ["autoFail", "autoFail"], ["speedZero", "speedZero"], ["incapacitated", "incapacitated"], ["initAdv", "initAdv"], ["initDis", "initDis"]].forEach(([flag, list]) => {
+        if (c[flag]) {
+          out[list].push(c.label);
+        }
+      });
+    });
+    const level = clampInt(exhaustion, 0, MAX_EXHAUSTION);
+    if (level) {
+      out.d20Penalty = -2 * level;
+      out.speedPenalty = 5 * level;
+      out.notes.push({ source: `Exhaustion ${level}`, text: `Every d20 roll is reduced by ${2 * level} and your Speed is ${5 * level} ft lower.${level >= MAX_EXHAUSTION ? " At level 6 you die." : ""}` });
+    }
+    return out;
+  }
+
+  // What the class and species features are doing right now. ctx: { level, barbarian, goliath, raging }.
+  function featureEffects(feat, ctx) {
+    const out = { speedBonus: 0, strCheckAdvantage: [], initiativeAdvantage: [], notes: [] };
+    if (ctx.goliath && ctx.level >= 5 && feat.largeFormActive) {
+      out.speedBonus += 10;
+      out.strCheckAdvantage.push("Large Form");
+      out.notes.push({ source: "Large Form", text: "You are Large: Speed +10 ft and Advantage on Strength checks. It lasts 10 minutes or until you end it." });
+    }
+    const aspect = ASPECTS.find((a) => a.key === feat.aspect);
+    if (ctx.barbarian && ctx.level >= 6 && aspect) {
+      out.notes.push({ source: `Aspect of the Wild: ${aspect.label}`, text: aspect.text });
+    }
+    if (ctx.barbarian && ctx.level >= 7) {
+      out.initiativeAdvantage.push("Feral Instinct");
+    }
+    return out;
+  }
+
+  // Adds the feature and condition effects to what the magic items already do. The result is what the sheet uses.
+  function combine(base, feat, ctx) {
+    const f = featureEffects(feat, ctx);
+    const c = conditionEffects(feat.conditions, feat.exhaustion);
+    const failList = c.autoFail;
+    return {
+      ...base,
+      speedBonus: f.speedBonus,
+      speedPenalty: base.speedPenalty + c.speedPenalty,
+      speedZero: c.speedZero.length > 0,
+      checkAdvantage: { str: f.strCheckAdvantage },
+      checkDisadvantage: c.checkDis,
+      saveDisadvantage: { dex: c.dexSaveDis },
+      autoFailSaves: { str: failList, dex: failList },
+      attackAdvantage: c.attackAdv,
+      attackDisadvantage: c.attackDis,
+      d20Penalty: c.d20Penalty,
+      initiativeAdvantage: [...f.initiativeAdvantage, ...c.initAdv],
+      initiativeDisadvantage: c.initDis,
+      incapacitated: c.incapacitated,
+      featureNotes: f.notes,
+      conditionNotes: c.notes
+    };
+  }
+
+  const pure = { MAX_EXHAUSTION, ASPECTS, CONDITIONS, sanitizeFeatures, afterRest, conditionEffects, featureEffects, combine };
+
+  // ---- browser UI ----
+
+  if (typeof document === "undefined") {
+    return pure;
+  }
+
+  const state = { feat: sanitizeFeatures({}), ready: false };
+  const $ = (id) => document.getElementById(id);
+
+  function el(tag, props = {}, ...children) {
+    const node = document.createElement(tag);
+    Object.entries(props).forEach(([key, value]) => {
+      if (key === "class") {
+        node.className = value;
+      } else if (key === "text") {
+        node.textContent = value;
+      } else if (value !== false && value !== null && value !== undefined) {
+        node.setAttribute(key, value === true ? "" : value);
+      }
+    });
+    children.flat(Infinity).forEach((child) => {
+      if (child !== null && child !== undefined && child !== false) {
+        node.append(child);
+      }
+    });
+    return node;
+  }
+
+  function context() {
+    const level = Number($("level").value) || 1;
+    return {
+      level,
+      barbarian: /barbarian/i.test($("class").value),
+      goliath: /goliath/i.test($("race").value),
+      raging: $("isRaging").checked,
+      prof: profByLevel(level),
+      conMod: getModifier($("con").value)
+    };
+  }
+
+  function say(message, type = "status-ok") {
+    if (typeof setStatus === "function") {
+      setStatus(message, type);
+    }
+  }
+
+  function changed() {
+    if (typeof scheduleSave === "function") {
+      scheduleSave();
+    }
+    render();
+    if (typeof updateDerived === "function") {
+      updateDerived({ skipClamp: true });
+    }
+  }
+
+  function passive(title, text) {
+    return el("div", { class: "feature-card" }, el("div", { class: "feature-head" }, el("strong", { text: title })), el("p", { class: "muted", text }));
+  }
+
+  function buildCards(ctx, compact) {
+    const cards = [];
+    const feat = state.feat;
+    if (ctx.goliath) {
+      const left = Math.max(0, ctx.prof - feat.stonesUsed);
+      cards.push(
+        el(
+          "div",
+          { class: "feature-card" },
+          el("div", { class: "feature-head" }, el("strong", { text: "Stone's Endurance" }), el("span", { class: "muted", text: `${left} of ${ctx.prof} left` })),
+          compact ? null : el("p", { class: "muted", text: `Reaction when you take damage: roll 1d12 + ${ctx.conMod} (your Constitution modifier) and reduce the damage by that total. Uses come back on a long rest.` }),
+          el(
+            "div",
+            { class: "feature-actions" },
+            el("button", { type: "button", class: "chip-btn", "data-feature": "stones-use", disabled: left < 1 }, "Use"),
+            feat.stonesUsed > 0 ? el("button", { type: "button", class: "chip-btn", "data-feature": "stones-undo" }, "Undo") : null,
+            compact ? el("span", { class: "muted", text: `d12 + ${ctx.conMod}` }) : null
+          )
+        )
+      );
+    }
+    if (ctx.goliath && ctx.level >= 5) {
+      const status = feat.largeFormActive ? "Active" : feat.largeFormUsed ? "Used" : "Ready";
+      cards.push(
+        el(
+          "div",
+          { class: "feature-card" },
+          el("div", { class: "feature-head" }, el("strong", { text: "Large Form" }), el("span", { class: feat.largeFormActive ? "feature-on" : "muted", text: status })),
+          compact ? null : el("p", { class: "muted", text: "Bonus action: become Large for 10 minutes. Advantage on Strength checks and +10 ft Speed. Once per long rest." }),
+          el(
+            "div",
+            { class: "feature-actions" },
+            !feat.largeFormUsed ? el("button", { type: "button", class: "chip-btn", "data-feature": "large-use" }, "Use (bonus action)") : null,
+            feat.largeFormActive ? el("button", { type: "button", class: "chip-btn", "data-feature": "large-end" }, "End Large Form") : null,
+            feat.largeFormUsed && !feat.largeFormActive ? el("span", { class: "muted", text: "Back after a long rest." }) : null
+          )
+        )
+      );
+    }
+    if (ctx.barbarian && ctx.level >= 6) {
+      const select = el("select", { "data-feature": "aspect", "aria-label": "Aspect of the Wild" }, el("option", { value: "", text: "Choose today's aspect" }));
+      ASPECTS.forEach((a) => select.append(el("option", { value: a.key, text: a.label })));
+      select.value = feat.aspect;
+      const chosen = ASPECTS.find((a) => a.key === feat.aspect);
+      cards.push(
+        el(
+          "div",
+          { class: "feature-card" },
+          el("div", { class: "feature-head" }, el("strong", { text: "Aspect of the Wild" }), select),
+          el("p", { class: "muted", text: chosen ? chosen.text : "Pick one after each long rest: Owl, Panther or Salmon." })
+        )
+      );
+    }
+    if (ctx.barbarian && ctx.level >= 7 && !compact) {
+      cards.push(passive("Feral Instinct", "Advantage on Initiative rolls."));
+      cards.push(passive("Instinctive Pounce", "As part of the bonus action that starts your Rage, you can move up to half your Speed."));
+    }
+    if (ctx.barbarian && ctx.level >= 9 && !compact) {
+      cards.push(passive("Brutal Strike", "Turn on Brutal Strike in the Battle tab after you choose Reckless Attack. You give up Advantage on one Strength attack for extra damage and an effect."));
+    }
+    return cards;
+  }
+
+  function renderNotes(target, notes) {
+    target.textContent = "";
+    target.hidden = !notes.length;
+    notes.forEach((n) => target.append(el("p", { class: "item-chip" }, el("strong", { text: `${n.source}: ` }), n.text)));
+  }
+
+  function renderConditions() {
+    const feat = state.feat;
+    const toggles = $("condToggles");
+    toggles.textContent = "";
+    CONDITIONS.forEach((c) => {
+      toggles.append(el("button", { type: "button", class: "cond-toggle", "data-cond": c.key, "aria-pressed": String(feat.conditions.includes(c.key)), title: c.text }, c.label));
+    });
+    $("condExhaustion").textContent = String(feat.exhaustion);
+    $("condExhMinus").disabled = feat.exhaustion < 1;
+    $("condExhPlus").disabled = feat.exhaustion >= MAX_EXHAUSTION;
+
+    const active = $("condActive");
+    active.textContent = "";
+    CONDITIONS.filter((c) => feat.conditions.includes(c.key)).forEach((c) => {
+      active.append(el("button", { type: "button", class: "cond-chip", "data-cond": c.key, title: `${c.text} Click to remove.` }, `${c.label} ×`));
+    });
+    if (feat.exhaustion) {
+      active.append(el("button", { type: "button", class: "cond-chip", "data-cond": "exhaustion-minus", title: "Click to remove one level." }, `Exhaustion ${feat.exhaustion} ×`));
+    }
+    const any = feat.conditions.length > 0 || feat.exhaustion > 0;
+    $("condStrip").classList.toggle("has-conditions", any);
+  }
+
+  function render() {
+    if (!state.ready) {
+      return;
+    }
+    const ctx = context();
+    const fx = featureEffects(state.feat, ctx);
+    const full = buildCards(ctx, false);
+    const list = $("featuresList");
+    list.textContent = "";
+    if (full.length) {
+      full.forEach((card) => list.append(card));
+    } else {
+      list.append(el("p", { class: "muted", text: "Class and species features appear here as your level, class and race fit them. Set Class to Barbarian and Race to Goliath under Details." }));
+    }
+    renderNotes($("featureNotes"), fx.notes);
+
+    const compact = buildCards(ctx, true);
+    const quick = $("btFeatures");
+    quick.textContent = "";
+    compact.forEach((card) => quick.append(card));
+    $("btFeaturesPanel").hidden = !compact.length;
+    renderNotes($("btFeatureNotes"), fx.notes);
+    renderConditions();
+  }
+
+  function handleFeature(target) {
+    const feat = state.feat;
+    const ctx = context();
+    const act = target.dataset.feature;
+    if (act === "stones-use") {
+      if (feat.stonesUsed < ctx.prof) {
+        feat.stonesUsed += 1;
+        const remaining = ctx.prof - feat.stonesUsed;
+        say(`Stone's Endurance: roll 1d12 + ${ctx.conMod} and reduce the damage by that total. ${remaining} ${remaining === 1 ? "use" : "uses"} left.`);
+      }
+    } else if (act === "stones-undo") {
+      feat.stonesUsed = Math.max(0, feat.stonesUsed - 1);
+    } else if (act === "large-use") {
+      feat.largeFormUsed = true;
+      feat.largeFormActive = true;
+      say("Large Form on: Speed +10 ft and Advantage on Strength checks for 10 minutes.");
+    } else if (act === "large-end") {
+      feat.largeFormActive = false;
+      say("Large Form ended. It comes back after a long rest.");
+    } else if (act === "aspect") {
+      feat.aspect = ASPECTS.some((a) => a.key === target.value) ? target.value : "";
+    } else {
+      return;
+    }
+    changed();
+  }
+
+  function toggleCondition(key) {
+    const feat = state.feat;
+    if (key === "exhaustion-minus") {
+      feat.exhaustion = Math.max(0, feat.exhaustion - 1);
+    } else if (feat.conditions.includes(key)) {
+      feat.conditions = feat.conditions.filter((k) => k !== key);
+    } else {
+      feat.conditions = [...feat.conditions, key];
+      const cond = CONDITIONS.find((c) => c.key === key);
+      if (cond && cond.incapacitated && $("isRaging").checked) {
+        say(`${cond.label} means you can't take actions, so your Rage ends early. Turn Rage off if it is still on.`, "status-error");
+      }
+    }
+    changed();
+  }
+
+  function bind() {
+    ["featuresList", "btFeatures"].forEach((id) => {
+      const box = $(id);
+      box.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-feature]");
+        if (button) {
+          handleFeature(button);
+        }
+      });
+      box.addEventListener("change", (event) => {
+        if (event.target.matches("select[data-feature]")) {
+          handleFeature(event.target);
+        }
+      });
+    });
+    $("condStrip").addEventListener("click", (event) => {
+      const cond = event.target.closest("[data-cond]");
+      if (cond) {
+        toggleCondition(cond.dataset.cond);
+      }
+    });
+    $("condExhMinus").addEventListener("click", () => {
+      state.feat.exhaustion = Math.max(0, state.feat.exhaustion - 1);
+      changed();
+    });
+    $("condExhPlus").addEventListener("click", () => {
+      state.feat.exhaustion = Math.min(MAX_EXHAUSTION, state.feat.exhaustion + 1);
+      if (state.feat.exhaustion >= MAX_EXHAUSTION) {
+        say("Exhaustion level 6 means death.", "status-error");
+      }
+      changed();
+    });
+    // Level, Class and Race decide which features show.
+    ["level", "class", "race", "isRaging", "con"].forEach((id) => {
+      $(id).addEventListener("input", render);
+      $(id).addEventListener("change", render);
+    });
+  }
+
+  // ---- hooks used by app.js, items.js and battle.js ----
+
+  function collect() {
+    return { ...state.feat, conditions: [...state.feat.conditions] };
+  }
+
+  function apply(data) {
+    state.feat = sanitizeFeatures(data);
+    render();
+  }
+
+  function reset() {
+    apply(null);
+  }
+
+  function rest(kind) {
+    state.feat = afterRest(state.feat, kind);
+    render();
+  }
+
+  function init() {
+    state.ready = true;
+    bind();
+    render();
+  }
+
+  return {
+    ...pure,
+    init,
+    collect,
+    apply,
+    reset,
+    shortRest: () => rest("short"),
+    longRest: () => rest("long"),
+    refresh: render,
+    ready: () => state.ready,
+    // The magic item effects plus feature and condition effects, as the sheet and Battle tab use them.
+    combine: (base) => combine(base, state.feat, context()),
+    exhaustion: () => state.feat.exhaustion
+  };
+})();
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = Items;
+  module.exports.Features = Features;
 }

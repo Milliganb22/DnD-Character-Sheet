@@ -35,6 +35,7 @@
               <label class="field">Initiative bonus<input id="initiativeBonus" type="number" value="0" /></label>
               <label class="field">Hit dice<input id="hitDice" type="text" placeholder="e.g. 1d8" /></label>
               <label class="field">Hit dice left<input id="hitDiceLeft" type="number" min="0" inputmode="numeric" placeholder="all" /></label>
+              <label class="field check-field"><span>Armor class</span><span class="check-inline"><input id="acAuto" type="checkbox" /> Unarmored Defense: 10 + Dex + Con</span></label>
             </div>
           </details>
         </div>
@@ -55,6 +56,10 @@
             <button id="exportBtn" class="menu-btn" type="button">Export JSON</button>
             <label class="menu-btn" for="importFile">Import JSON</label>
             <input id="importFile" type="file" accept="application/json" hidden />
+            <details class="menu-restore" id="restoreMenu">
+              <summary class="menu-btn">Restore a saved copy</summary>
+              <div id="restoreList" class="restore-list"></div>
+            </details>
             <button id="resetBtn" class="menu-btn menu-danger" type="button">Reset sheet</button>
           </div>
         </details>
@@ -81,6 +86,7 @@
       <label class="vital vital-init">
         <span class="vital-label">Initiative</span>
         <input id="initiative" type="number" value="0" readonly />
+        <span class="vital-effective" id="initEffective" hidden></span>
       </label>
 
       <label class="vital vital-speed">
@@ -147,6 +153,28 @@
       <button id="clearDeathSavesBtn" type="button" class="chip-btn">Clear</button>
     </section>
 
+    <section class="cond-strip" id="condStrip" aria-label="Conditions">
+      <details class="cond-pick">
+        <summary>Conditions</summary>
+        <div class="cond-body">
+          <div id="condToggles" class="cond-toggles" role="group" aria-label="Conditions you have"></div>
+          <div class="cond-exh" role="group" aria-label="Exhaustion level">
+            <span>Exhaustion</span>
+            <button id="condExhMinus" type="button" class="chip-btn" aria-label="Lower Exhaustion by one">-</button>
+            <strong id="condExhaustion" aria-live="polite">0</strong>
+            <button id="condExhPlus" type="button" class="chip-btn" aria-label="Raise Exhaustion by one">+</button>
+          </div>
+        </div>
+      </details>
+      <div id="condActive" class="cond-active"></div>
+    </section>
+
+    <section class="backup-strip" id="backupStrip" aria-live="polite" hidden>
+      <span id="backupText"></span>
+      <button id="backupNow" type="button" class="chip-btn primary">Export now</button>
+      <button id="backupLater" type="button" class="chip-btn">Remind me later</button>
+    </section>
+
     <section class="levelup" id="levelUpBanner" aria-live="polite" hidden></section>
 
     <main class="sheet" id="sheetTab" role="tabpanel" aria-labelledby="tabSheet">
@@ -206,6 +234,12 @@
             <p id="itemsNotice" class="muted" aria-live="polite"></p>
             <div id="itemsChips" class="item-chips" hidden></div>
             <div id="itemsList" class="items-list"></div>
+          </details>
+
+          <details class="panel check fold o-features" id="featuresPanel" open data-isolated>
+            <summary><h2>Class and species features</h2></summary>
+            <div id="featureNotes" class="item-chips" hidden></div>
+            <div id="featuresList" class="features-list"></div>
           </details>
 
         <details class="panel check fold o-prof" open>
@@ -314,6 +348,10 @@
                 <span class="toggle-title">Reckless Attack</span>
                 <span class="toggle-sub">Advantage on Strength melee</span>
               </button>
+              <button id="btBrutal" type="button" class="toggle-btn" aria-pressed="false" hidden>
+                <span class="toggle-title">Brutal Strike</span>
+                <span class="toggle-sub">Give up Advantage on one attack for +1d10</span>
+              </button>
             </div>
             <div class="undo-row">
               <button id="btUndoRage" type="button" class="chip-btn" title="Turn Rage off and get the use back" hidden>Undo Rage</button>
@@ -343,6 +381,12 @@
             <div id="btItems" class="items-list is-compact"></div>
           </details>
 
+          <details class="panel check fold o-bt-features" id="btFeaturesPanel" open data-isolated hidden>
+            <summary><h2>Features</h2></summary>
+            <div id="btFeatureNotes" class="item-chips" hidden></div>
+            <div id="btFeatures" class="features-list is-compact"></div>
+          </details>
+
           <section class="panel check o-bt-numbers" aria-labelledby="h-btnumbers">
             <h2 id="h-btnumbers">Your numbers</h2>
             <div id="btNumbers"></div>
@@ -352,6 +396,7 @@
         <div class="battle-main">
           <section class="panel act o-bt-attack" aria-labelledby="h-btattack" data-nosave>
             <h2 id="h-btattack">Attack</h2>
+            <p id="btIncapWarning" class="warning" hidden></p>
             <div id="btWeapons" class="weapon-picker" role="radiogroup" aria-label="Weapon"></div>
             <label class="check-inline two-handed" id="btTwoHandedWrap" hidden><input type="checkbox" id="btTwoHanded" /> <span id="btTwoHandedText">Two-handed</span></label>
             <div class="roll-grid">
@@ -360,6 +405,7 @@
               <label class="field"><span>Target AC (optional)</span><input id="btAc" type="number" min="0" max="99" inputmode="numeric" /></label>
               <label class="field"><span id="btDiceLabel">Damage dice rolled</span><input id="btDice" type="number" min="0" inputmode="numeric" /></label>
               <label class="field" id="btExtraWrap" hidden><span id="btExtraLabel">Extra dice rolled</span><input id="btExtra" type="number" min="0" inputmode="numeric" /></label>
+              <label class="field" id="btBrutalWrap" hidden><span id="btBrutalLabel">Brutal Strike die rolled</span><input id="btBrutalDie" type="number" min="0" inputmode="numeric" /></label>
             </div>
             <div id="btResult" class="result" aria-live="polite"></div>
             <div class="result-actions">
