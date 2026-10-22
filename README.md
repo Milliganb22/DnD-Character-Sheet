@@ -143,7 +143,7 @@ The **Maps** tab keeps the map images and handouts you import, in a gallery you 
 
 - **Damage / Heal:** type an amount in the top bar and press **Damage** or **Heal** (Enter applies damage). **Full HP** sits next to Heal. Temp HP is under **Temp HP**. Damage uses up Temp HP first.
 - **Short rest / Long rest** are in the top bar as well as the Magic items panel. A short rest gives back one rage and opens **Spend hit die** (rolls a die plus your Constitution modifier and heals that much; HP is not restored automatically, as in the rules). A long rest gives back all HP, all hit dice, all rages and item charges, clears temp HP and death saves, and ends Haste. Hit dice left is tracked under Details (empty means none spent).
-- **Levelling up:** when you type enough Experience to reach the next level, the level goes up on its own (it never goes down). The proficiency bonus, rage uses, rage damage and hit dice update, and a **Level up** banner lists the new class features from the built-in rules, plus a box to add your hit point gain to your maximum and current HP. Roll the die or use the average. You still add new features to Features and Traits yourself, and choose ability score improvements. The banner stays until you dismiss it.
+- **Levelling up:** when you type enough Experience to reach the next level, the level goes up on its own (it never goes down). The proficiency bonus, rage uses, rage damage and hit dice update, and a **Level up** banner lists the new class features from the built-in rules, plus a box to add your hit point gain to your maximum and current HP. Roll the die or use the average. You still add new features to Features and Traits yourself, and choose ability score improvements. The banner stays until you dismiss it. **Undo level up** on the banner puts the level, hit dice and any hit points you added back one level (lowering the Experience box on its own never lowers the level).
 - **Battle turn tracker:** Extra Attack gives 2 attacks per Attack action. With Haste on, a **Haste action** appears and the turn counter allows a third attack (the Haste action allows one weapon attack only). A natural 20 doubles the damage dice, not the flat bonuses.
 
 ## Class and Species Features, Conditions
@@ -191,6 +191,16 @@ The built-in data (`rules-data.js`, about 1.3 MB) is the System Reference Docume
 ### Attribution
 
 This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+## Releasing a Change (Cache Stamp)
+
+Browsers keep copies of the scripts and styles, so a browser can run old code after an update. Before every push, run:
+
+```bash
+node tools/stamp.js
+```
+
+It adds a version stamp to every script and style link in `index.html` (for example `app.js?v=202610220105`), which makes browsers fetch the new files. The same stamp shows under **File** as "Version", so you can see which version a browser is really running. If File shows an older stamp than the latest push, hard refresh the page (Cmd+Shift+R).
 
 ## Sharing This on GitHub
 

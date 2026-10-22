@@ -866,7 +866,8 @@ function sanitizeLevelUp(raw) {
   if (!(from >= 1 && to > from && to <= 20)) {
     return null;
   }
-  return { from, to, hpAdded: Math.max(0, Math.floor(Number(raw.hpAdded) || 0)), hpDone: Boolean(raw.hpDone) };
+  const lastFrom = Math.floor(Number(raw.lastFrom));
+  return { from, to, lastFrom: lastFrom >= from && lastFrom < to ? lastFrom : from, hpAdded: Math.max(0, Math.floor(Number(raw.hpAdded) || 0)), hpDone: Boolean(raw.hpDone) };
 }
 
 function updateXpReadout() {
@@ -887,7 +888,8 @@ function checkLevelUp() {
   levelEl.value = String(target);
   // Keep one banner going across several level-ups, unless the hit points for the earlier ones are already done.
   const carry = levelUpState && !levelUpState.hpDone ? levelUpState : null;
-  levelUpState = { from: carry ? carry.from : current, to: target, hpAdded: 0, hpDone: false };
+  // lastFrom is the level before this latest jump, which is where Undo level up goes back to.
+  levelUpState = { from: carry ? carry.from : current, to: target, lastFrom: current, hpAdded: 0, hpDone: false };
   const hitDice = document.getElementById("hitDice");
   const match = /^\s*(\d+)d(\d+)\s*$/i.exec(hitDice.value);
   if (match) {
@@ -941,9 +943,18 @@ function buildLevelUpBanner(info) {
   }
 
   box.append(
-    mk("div", { class: "levelup-head" }, mk("h2", { text: count > 1 ? `Level up! Level ${from} to ${to}` : `Level up! You are now level ${to}` }), mk("button", { type: "button", class: "chip-btn", "data-lu": "dismiss", text: "Dismiss" })),
+    mk(
+      "div",
+      { class: "levelup-head" },
+      mk("h2", { text: count > 1 ? `Level up! Level ${from} to ${to}` : `Level up! You are now level ${to}` }),
+      mk("span", { class: "levelup-head-actions" }, mk("button", { type: "button", class: "chip-btn", "data-lu": "undo", title: `Put the level, hit dice and any hit points you added back to level ${from}`, text: "Undo level up" }), mk("button", { type: "button", class: "chip-btn", "data-lu": "dismiss", text: "Dismiss" }))
+    ),
     mk("p", { class: "muted", text: `Already updated for you: ${done.join(", ")}.` })
   );
+  const xpNow = Math.max(0, Number(document.getElementById("xp").value) || 0);
+  if (levelForXp(xpNow) < to) {
+    box.append(mk("p", { class: "warning", text: `Your Experience (${xpNow.toLocaleString("en-US")}) is below the amount for level ${to}. The level does not go down by itself. If the level up was a mistake, choose Undo level up.` }));
+  }
 
   const todo = mk("ul", { class: "levelup-list" });
   for (let l = from + 1; l <= to; l += 1) {
@@ -1007,6 +1018,40 @@ async function renderLevelUp() {
   }
 }
 
+// Puts back what a level up changed on its own: the level, the hit dice and any hit points added from the banner.
+// Anything else you typed stays as it is.
+function undoLevelUp() {
+  if (!levelUpState) {
+    return;
+  }
+  const { from, to, hpAdded, hpDone } = levelUpState;
+  const back = Math.min(to - 1, Math.max(from, levelUpState.lastFrom || from));
+  if (!confirm(`Go back to level ${back}? The level, hit dice${hpDone ? ` and the ${hpAdded} hit points you added` : ""} go back. Check your Experience too.`)) {
+    return;
+  }
+  document.getElementById("level").value = String(back);
+  const hitDice = document.getElementById("hitDice");
+  const match = /^\s*(\d+)d(\d+)\s*$/i.exec(hitDice.value);
+  if (match) {
+    const leftEl = document.getElementById("hitDiceLeft");
+    if (leftEl.value !== "") {
+      leftEl.value = String(Math.max(0, (Number(leftEl.value) || 0) - (to - back)));
+    }
+    hitDice.value = `${back}d${match[2]}`;
+  }
+  if (hpDone && hpAdded) {
+    const maxEl = document.getElementById("maxHp");
+    const curEl = document.getElementById("currentHp");
+    maxEl.value = String(Math.max(1, (Number(maxEl.value) || 0) - hpAdded));
+    curEl.value = String(Math.max(0, Math.min(Number(curEl.value) || 0, Number(maxEl.value))));
+  }
+  levelUpState = back > from ? { from, to: back, lastFrom: from, hpAdded: 0, hpDone: false } : null;
+  updateDerived();
+  scheduleSave();
+  renderLevelUp();
+  setStatus(`Back to level ${back}.`, "status-ok");
+}
+
 function bindLevelUp() {
   document.getElementById("levelUpBanner").addEventListener("click", (event) => {
     const button = event.target.closest("[data-lu]");
@@ -1036,6 +1081,8 @@ function bindLevelUp() {
       buildLevelUpBanner(null);
       renderLevelUp();
       setStatus(`Added ${gained} HP to your maximum and current hit points.`, "status-ok");
+    } else if (action === "undo") {
+      undoLevelUp();
     } else if (action === "rules") {
       Rules.open(document.getElementById("class").value.trim());
     }
@@ -1321,6 +1368,9 @@ function bindEvents() {
   document.body.addEventListener("change", (event) => {
     if (event.target.id === "xp") {
       checkLevelUp();
+      if (levelUpState) {
+        renderLevelUp();
+      }
     }
     if (event.target.id === "maxHp" || event.target.id === "level") {
       updateDerived();

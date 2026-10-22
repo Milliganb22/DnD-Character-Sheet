@@ -559,7 +559,9 @@ const Rules = (() => {
       return Promise.resolve();
     }
     if (!dataPromise) {
-      dataPromise = loadScript("rules-data.js").catch((error) => {
+      const meta = document.querySelector('meta[name="app-version"]');
+      const version = meta && meta.content && meta.content !== "dev" ? `?v=${encodeURIComponent(meta.content)}` : "";
+      dataPromise = loadScript(`rules-data.js${version}`).catch((error) => {
         dataPromise = null;
         throw error;
       });

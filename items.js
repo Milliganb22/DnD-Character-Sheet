@@ -1012,6 +1012,7 @@ const Features = (() => {
     }
     const any = feat.conditions.length > 0 || feat.exhaustion > 0;
     $("condStrip").classList.toggle("has-conditions", any);
+    $("condSummary").textContent = any ? "Conditions" : "Conditions: none";
   }
 
   function render() {

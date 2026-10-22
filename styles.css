@@ -3200,3 +3200,14 @@ body[data-tab="rules"] .backup-strip {
     order: 2;
   }
 }
+
+.levelup-head-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.menu-version {
+  margin: 0.2rem 0.7rem 0.1rem;
+  font-size: 0.8rem;
+}
