@@ -1,0 +1,10 @@
+# Cloudflare publishes the repo folder as the website. These files are not part of the site.
+.assetsignore
+.gitignore
+.DS_Store
+README.md
+tools
+character-sheet*.json
+*.json
+*.pdf
+*.pages
